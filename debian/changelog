@@ -1,0 +1,7 @@
+python-gflags (1.3-1) unstable; urgency=low
+
+  * Initial release.
+  * Packaging based on gflags 1.3
+
+ -- Tim 'mithro' Ansell <mithro@mithis.com>  Mon, 04 Jan 2010 18:46:10 -0800
+
