@@ -38,7 +38,7 @@ install-python%:
 	mv $(CURDIR)/debian/python-gflags/usr/bin/gflags2man.py $(CURDIR)/debian/python-gflags/usr/bin/gflags2man
 	# Generate a man file for gflags2man
 	mkdir -p $(CURDIR)/debian/python-gflags/usr/share/man/man1
-	python$* gflags2man.py --dest_dir $(CURDIR)/debian/python-gflags/usr/share/man/man1 $(CURDIR)/debian/python-gflags/usr/bin/gflags2man
+	PYTHONPATH=$(CURDIR)/debian/.. python$* gflags2man.py --dest_dir $(CURDIR)/debian/python-gflags/usr/share/man/man1 $(CURDIR)/debian/python-gflags/usr/bin/gflags2man
 
 # Build architecture-independent files here.
 binary-indep: build install

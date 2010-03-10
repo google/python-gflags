@@ -29,14 +29,16 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from distutils.core import setup
+from setuptools import setup
 
-setup(name='gflags',
-      version='0.8',
+setup(name='python-gflags',
+      version='1.3',
       description='Google Commandline Flags Module',
       license='BSD',
       author='Google Inc.',
       author_email='opensource@google.com',
-      url='http://code.google.com/p/google-gflags',
+      url='http://code.google.com/p/python-gflags',
       py_modules=["gflags"],
-      data_files=[("bin", ["gflags2man.py"])])
+      data_files=[("bin", ["gflags2man.py"])],
+      include_package_data=True,
+      )

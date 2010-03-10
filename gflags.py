@@ -934,7 +934,7 @@ class FlagValues:
     fl = self.FlagDict()
 
     # This pre parses the argv list for --flagfile=<> options.
-    argv = self.ReadFlagsFromFiles(argv)
+    argv = argv[:1] + self.ReadFlagsFromFiles(argv[1:], force_gnu=False)
 
     # Correct the argv to support the google style of passing boolean
     # parameters.  Boolean parameters may be passed by using --mybool,
@@ -1109,6 +1109,8 @@ class FlagValues:
 
   def __RenderModuleFlags(self, module, flags, output_lines, prefix=""):
     """Generates a help string for a given module."""
+    if not isinstance(module, str):
+      module = module.__name__
     output_lines.append('\n%s%s:' % (prefix, module))
     self.__RenderFlagList(flags, output_lines, prefix + "  ")
 
@@ -1131,11 +1133,26 @@ class FlagValues:
     if key_flags:
       self.__RenderModuleFlags(module, key_flags, output_lines, prefix)
 
-  def MainModuleHelp(self):
-    """Returns: A string describing the key flags of the main module."""
+  def ModuleHelp(self, module):
+    """Describe the key flags of a module.
+
+    Args:
+      module: A module object or a module name (a string).
+
+    Returns:
+      string describing the key flags of a module.
+    """
     helplist = []
-    self.__RenderOurModuleKeyFlags(_GetMainModule(), helplist)
+    self.__RenderOurModuleKeyFlags(module, helplist)
     return '\n'.join(helplist)
+
+  def MainModuleHelp(self):
+    """Describe the key flags of the main module.
+
+    Returns:
+      string describing the key flags of a module.
+    """
+    return self.ModuleHelp(_GetMainModule())
 
   def __RenderFlagList(self, flaglist, output_lines, prefix="  "):
     fl = self.FlagDict()
@@ -1309,11 +1326,15 @@ class FlagValues:
         flag_line_list.append(line.strip())
     return flag_line_list
 
-  def ReadFlagsFromFiles(self, argv):
+  def ReadFlagsFromFiles(self, argv, force_gnu=True):
     """Processes command line args, but also allow args to be read from file.
     Args:
-      argv: A list of strings, usually sys.argv, which may contain one
-        or more flagfile directives of the form --flagfile="./filename".
+      argv: A list of strings, usually sys.argv[1:], which may contain one or
+        more flagfile directives of the form --flagfile="./filename".
+        Note that the name of the program (sys.argv[0]) should be omitted.
+      force_gnu: If False, --flagfile parsing obeys normal flag semantics.
+        If True, --flagfile parsing instead follows gnu_getopt semantics.
+        *** WARNING *** force_gnu=False may become the future default!
 
     Returns:
 
@@ -1356,11 +1377,19 @@ class FlagValues:
         else:
           # This handles the case of (-)-flagfile=foo.
           flag_filename = self.ExtractFilename(current_arg)
-        new_argv = (new_argv[:1] +
-                    self.__GetFlagFileLines(flag_filename, parsed_file_list) +
-                    new_argv[1:])
+        new_argv[0:0] = self.__GetFlagFileLines(flag_filename, parsed_file_list)
       else:
         new_argv.append(current_arg)
+        # Stop parsing after '--', like getopt and gnu_getopt.
+        if current_arg == '--':
+          break
+        # Stop parsing after a non-flag, like getopt.
+        if not current_arg.startswith('-'):
+          if not force_gnu and not self.__dict__['__use_gnu_getopt']:
+            break
+
+    if rest_of_args:
+      new_argv.extend(rest_of_args)
 
     return new_argv
 
@@ -1541,7 +1570,7 @@ class Flag:
     try:
       self.value = self.parser.Parse(argument)
     except ValueError, e:  # recast ValueError as IllegalFlagValue
-      raise IllegalFlagValue("flag --%s: %s" % (self.name, e))
+      raise IllegalFlagValue("flag --%s=%s: %s" % (self.name, argument, e))
     self.present += 1
 
   def Unparse(self):

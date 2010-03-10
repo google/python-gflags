@@ -48,6 +48,7 @@ FLAGS=flags.FLAGS
 # test_module_foo, and module_bar instead of test_module_bar.
 import test_module_foo as module_foo
 import test_module_bar as module_bar
+import test_module_baz as module_baz
 
 def MultiLineEqual(expected_help, help):
   """Returns True if expected_help == help.  Otherwise returns False
@@ -507,7 +508,7 @@ class FlagsUnitTest(unittest.TestCase):
       "--testspacelist [] --x 10 "
       "--noexec --quack "
       "--test1 "
-      "--testget1 --no? --nodebug --nohelp --nohelpshort --nohelpxml "
+      "--testget1 --tmod_baz_x --no? --nodebug --nohelp --nohelpshort --nohelpxml "
       "--noq --notest0 --notestget2 "
       "--notestget3 --notestnone")
 
@@ -533,7 +534,7 @@ class FlagsUnitTest(unittest.TestCase):
       "--testspacelist [] --x 10 "
       "--debug --noexec --quack "
       "--test1 "
-      "--testget1 --no? --nohelp --nohelpshort --nohelpxml "
+      "--testget1 --tmod_baz_x --no? --nohelp --nohelpshort --nohelpxml "
       "--noq --notest0 --notestget2 "
       "--notestget3 --notestnone")
 
@@ -774,60 +775,69 @@ class FlagsUnitTest(unittest.TestCase):
     FLAGS.__delattr__('UnitTestNumber')
     FLAGS.__delattr__('UnitTestList')
 
+  def _ReadFlagsFromFiles(self, argv, force_gnu):
+    return argv[:1] + FLAGS.ReadFlagsFromFiles(argv[1:], force_gnu=force_gnu)
+
   #### Flagfile Unit Tests ####
   def testMethod_flagfiles_1(self):
     """ Test trivial case with no flagfile based options. """
     self.__DeclareSomeFlags()
-    fake_cmd_line = 'fooScript --UnitTestBoolFlag'
-    fake_argv = fake_cmd_line.split(' ')
-    FLAGS(fake_argv)
-    self.assertEqual( FLAGS.UnitTestBoolFlag, 1)
-    self.assertEqual( fake_argv, FLAGS.ReadFlagsFromFiles(fake_argv))
-    self._UndeclareSomeFlags()
+    try:
+      fake_cmd_line = 'fooScript --UnitTestBoolFlag'
+      fake_argv = fake_cmd_line.split(' ')
+      FLAGS(fake_argv)
+      self.assertEqual( FLAGS.UnitTestBoolFlag, 1)
+      self.assertEqual( fake_argv, self._ReadFlagsFromFiles(fake_argv, False))
+    finally:
+      self._UndeclareSomeFlags()
   # end testMethodOne
 
   def testMethod_flagfiles_2(self):
     """Tests parsing one file + arguments off simulated argv"""
     self.__DeclareSomeFlags()
-    tmp_files = self._SetupTestFiles()
-    # specify our temp file on the fake cmd line
-    fake_cmd_line = 'fooScript --q --flagfile=%s' % tmp_files[0]
-    fake_argv = fake_cmd_line.split(' ')
+    try:
+      tmp_files = self._SetupTestFiles()
+      # specify our temp file on the fake cmd line
+      fake_cmd_line = 'fooScript --q --flagfile=%s' % tmp_files[0]
+      fake_argv = fake_cmd_line.split(' ')
 
-    # We should see the original cmd line with the file's contents spliced in.
-    # Note that these will be in REVERSE order from order encountered in file
-    # This is done so arguements we encounter sooner will have priority.
-    expected_results = ['fooScript',
-                          '--UnitTestMessage1=tempFile1!',
-                          '--UnitTestNumber=54321',
-                          '--noUnitTestBoolFlag',
-                          '--q']
-    test_results = FLAGS.ReadFlagsFromFiles(fake_argv)
-    self.assertEqual(expected_results, test_results)
-    self._RemoveTestFiles(tmp_files)
-    self._UndeclareSomeFlags()
+      # We should see the original cmd line with the file's contents spliced in.
+      # Note that these will be in REVERSE order from order encountered in file
+      # This is done so arguements we encounter sooner will have priority.
+      expected_results = ['fooScript',
+                            '--UnitTestMessage1=tempFile1!',
+                            '--UnitTestNumber=54321',
+                            '--noUnitTestBoolFlag',
+                            '--q']
+      test_results = self._ReadFlagsFromFiles(fake_argv, False)
+      self.assertEqual(expected_results, test_results)
+    finally:
+      self._RemoveTestFiles(tmp_files)
+      self._UndeclareSomeFlags()
   # end testTwo def
 
   def testMethod_flagfiles_3(self):
     """Tests parsing nested files + arguments of simulated argv"""
     self.__DeclareSomeFlags()
-    tmp_files = self._SetupTestFiles()
-    # specify our temp file on the fake cmd line
-    fake_cmd_line = ('fooScript --UnitTestNumber=77 --flagfile=%s'
-                     % tmp_files[1])
-    fake_argv = fake_cmd_line.split(' ')
+    try:
+      tmp_files = self._SetupTestFiles()
+      # specify our temp file on the fake cmd line
+      fake_cmd_line = ('fooScript --UnitTestNumber=77 --flagfile=%s'
+                       % tmp_files[1])
+      fake_argv = fake_cmd_line.split(' ')
 
-    expected_results = ['fooScript',
-                          '--UnitTestMessage1=tempFile1!',
-                          '--UnitTestNumber=54321',
-                          '--noUnitTestBoolFlag',
-                          '--UnitTestMessage2=setFromTempFile2',
-                          '--UnitTestNumber=6789a',
-                          '--UnitTestNumber=77']
-    test_results = FLAGS.ReadFlagsFromFiles(fake_argv)
-    self.assertEqual(expected_results, test_results)
-    self._RemoveTestFiles(tmp_files)
-    self._UndeclareSomeFlags()
+      expected_results = ['fooScript',
+                            '--UnitTestMessage1=tempFile1!',
+                            '--UnitTestNumber=54321',
+                            '--noUnitTestBoolFlag',
+                            '--UnitTestMessage2=setFromTempFile2',
+                            '--UnitTestNumber=6789a',
+                            '--UnitTestNumber=77']
+      test_results = self._ReadFlagsFromFiles(fake_argv, False)
+      self.assertEqual(expected_results, test_results)
+    finally:
+      self._RemoveTestFiles(tmp_files)
+      self._UndeclareSomeFlags()
   # end testThree def
 
   def testMethod_flagfiles_4(self):
@@ -835,20 +845,106 @@ class FlagsUnitTest(unittest.TestCase):
       This test should print a warning to stderr of some sort.
     """
     self.__DeclareSomeFlags()
-    tmp_files = self._SetupTestFiles()
-    # specify our temp file on the fake cmd line
-    fake_cmd_line = ('fooScript --flagfile=%s --noUnitTestBoolFlag'
-                     % tmp_files[2])
-    fake_argv = fake_cmd_line.split(' ')
-    expected_results = ['fooScript',
-                          '--UnitTestMessage1=setFromTempFile3',
-                          '--UnitTestBoolFlag',
-                          '--noUnitTestBoolFlag' ]
+    try:
+      tmp_files = self._SetupTestFiles()
+      # specify our temp file on the fake cmd line
+      fake_cmd_line = ('fooScript --flagfile=%s --noUnitTestBoolFlag'
+                       % tmp_files[2])
+      fake_argv = fake_cmd_line.split(' ')
+      expected_results = ['fooScript',
+                            '--UnitTestMessage1=setFromTempFile3',
+                            '--UnitTestBoolFlag',
+                            '--noUnitTestBoolFlag' ]
 
-    test_results = FLAGS.ReadFlagsFromFiles(fake_argv)
-    self.assertEqual(expected_results, test_results)
-    self._RemoveTestFiles(tmp_files)
-    self._UndeclareSomeFlags()
+      test_results = self._ReadFlagsFromFiles(fake_argv, False)
+      self.assertEqual(expected_results, test_results)
+    finally:
+      self._RemoveTestFiles(tmp_files)
+      self._UndeclareSomeFlags()
+
+  def testMethod_flagfiles_5(self):
+    """Test that --flagfile parsing respects the '--' end-of-options marker."""
+    self.__DeclareSomeFlags()
+    try:
+      tmp_files = self._SetupTestFiles()
+      # specify our temp file on the fake cmd line
+      fake_cmd_line = 'fooScript --SomeFlag -- --flagfile=%s' % tmp_files[0]
+      fake_argv = fake_cmd_line.split(' ')
+      expected_results = ['fooScript',
+                          '--SomeFlag',
+                          '--',
+                          '--flagfile=%s' % tmp_files[0]]
+
+      test_results = self._ReadFlagsFromFiles(fake_argv, False)
+      self.assertEqual(expected_results, test_results)
+    finally:
+      self._RemoveTestFiles(tmp_files)
+      self._UndeclareSomeFlags()
+
+  def testMethod_flagfiles_6(self):
+    """Test that --flagfile parsing stops at non-options (non-GNU behavior)."""
+    self.__DeclareSomeFlags()
+    try:
+      tmp_files = self._SetupTestFiles()
+      # specify our temp file on the fake cmd line
+      fake_cmd_line = ('fooScript --SomeFlag some_arg --flagfile=%s'
+                       % tmp_files[0])
+      fake_argv = fake_cmd_line.split(' ')
+      expected_results = ['fooScript',
+                          '--SomeFlag',
+                          'some_arg',
+                          '--flagfile=%s' % tmp_files[0]]
+
+      test_results = self._ReadFlagsFromFiles(fake_argv, False)
+      self.assertEqual(expected_results, test_results)
+    finally:
+      self._RemoveTestFiles(tmp_files)
+      self._UndeclareSomeFlags()
+
+  def testMethod_flagfiles_7(self):
+    """Test that --flagfile parsing skips over a non-option (GNU behavior)."""
+    self.__DeclareSomeFlags()
+    try:
+      FLAGS.UseGnuGetOpt()
+      tmp_files = self._SetupTestFiles()
+      # specify our temp file on the fake cmd line
+      fake_cmd_line = ('fooScript --SomeFlag some_arg --flagfile=%s'
+                       % tmp_files[0])
+      fake_argv = fake_cmd_line.split(' ')
+      expected_results = ['fooScript',
+                          '--UnitTestMessage1=tempFile1!',
+                          '--UnitTestNumber=54321',
+                          '--noUnitTestBoolFlag',
+                          '--SomeFlag',
+                          'some_arg']
+
+      test_results = self._ReadFlagsFromFiles(fake_argv, False)
+      self.assertEqual(expected_results, test_results)
+    finally:
+      self._RemoveTestFiles(tmp_files)
+      self._UndeclareSomeFlags()
+
+  def testMethod_flagfiles_8(self):
+    """Test that --flagfile parsing respects force_gnu=True."""
+    self.__DeclareSomeFlags()
+    try:
+      tmp_files = self._SetupTestFiles()
+      # specify our temp file on the fake cmd line
+      fake_cmd_line = ('fooScript --SomeFlag some_arg --flagfile=%s'
+                       % tmp_files[0])
+      fake_argv = fake_cmd_line.split(' ')
+      expected_results = ['fooScript',
+                          '--UnitTestMessage1=tempFile1!',
+                          '--UnitTestNumber=54321',
+                          '--noUnitTestBoolFlag',
+                          '--SomeFlag',
+                          'some_arg']
+
+      test_results = self._ReadFlagsFromFiles(fake_argv, True)
+      self.assertEqual(expected_results, test_results)
+    finally:
+      self._RemoveTestFiles(tmp_files)
+      self._UndeclareSomeFlags()
 
   def test_flagfiles_user_path_expansion(self):
     """Test that user directory referenced paths (ie. ~/foo) are correctly
@@ -1179,9 +1275,19 @@ class FlagsUnitTest(unittest.TestCase):
     assert len(argv) == 1, "wrong number of arguments pulled"
     assert argv[0]=='./program', "program name not preserved"
 
+  def test_module_help(self):
+    """Test ModuleHelp()."""
+    helpstr = FLAGS.ModuleHelp(module_baz)
+
+    expected_help = "\n" + module_baz.__name__ + ":" + """
+  --[no]tmod_baz_x: Boolean flag.
+    (default: 'true')"""
+
+    self.assertMultiLineEqual(expected_help, helpstr)
+
   def test_main_module_help(self):
-    """Test MainModuleHelp()"""
-    help = FLAGS.MainModuleHelp()
+    """Test MainModuleHelp()."""
+    helpstr = FLAGS.MainModuleHelp()
 
     # When this test is invoked on behalf of flags_unittest_2_2,
     # the main module has not defined any flags. Since there's
@@ -1252,7 +1358,7 @@ class FlagsUnitTest(unittest.TestCase):
   -z,--[no]zoom1: runhelp z1
     (default: 'false')"""
 
-    if not MultiLineEqual(expected_help, help):
+    if not MultiLineEqual(expected_help, helpstr):
       self.fail()
 
   def test_create_flag_errors(self):
