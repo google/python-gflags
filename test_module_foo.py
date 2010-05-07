@@ -48,7 +48,9 @@ FLAGS = flags.FLAGS
 # For historical reasons we use the name module_bar instead of test_module_bar.
 import test_module_bar as module_bar
 
-DECLARED_KEY_FLAGS = ['tmod_bar_x', 'tmod_bar_z', 'tmod_bar_t']
+DECLARED_KEY_FLAGS = ['tmod_bar_x', 'tmod_bar_z', 'tmod_bar_t',
+                      # Special (not user-defined) flag:
+                      'flagfile']
 
 
 def DefineFlags():

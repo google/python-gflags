@@ -599,15 +599,15 @@ class FlagsUnitTest(unittest.TestCase):
 
     # Make sure allow_override doesn't work with None default
     try:
-      flags.DEFINE_boolean("dup3", 0, "runhelp d31", short_name='u',
+      flags.DEFINE_boolean("dup3", 0, "runhelp d31", short_name='u3',
                            allow_override=0)
       flag = FLAGS.FlagDict()['dup3']
       self.assertEqual(flag.default, 0)
 
-      flags.DEFINE_boolean("dup3", None, "runhelp d32", short_name='u',
+      flags.DEFINE_boolean("dup3", None, "runhelp d32", short_name='u3',
                            allow_override=1)
       raise AssertionError('Cannot override a flag with a default of None')
-    except flags.DuplicateFlag, e:
+    except flags.DuplicateFlagCannotPropagateNoneToSwig, e:
       pass
 
     # Make sure that when we override, the help string gets updated correctly
@@ -1289,14 +1289,6 @@ class FlagsUnitTest(unittest.TestCase):
     """Test MainModuleHelp()."""
     helpstr = FLAGS.MainModuleHelp()
 
-    # When this test is invoked on behalf of flags_unittest_2_2,
-    # the main module has not defined any flags. Since there's
-    # no easy way to run this script in our test environment
-    # directly from python2.2, don't bother to test the output
-    # of MainModuleHelp() in that scenario.
-    if sys.version.startswith('2.2.'):
-      return
-
     expected_help = "\n" + sys.argv[0] + ':' + """
   --[no]debug: debughelp
     (default: 'false')
@@ -1445,6 +1437,15 @@ class FlagsUnitTest(unittest.TestCase):
     """
     return [f.name for f in flag_values._GetKeyFlagsForModule(module)]
 
+  def _AssertListsHaveSameElements(self, list_1, list_2):
+    # Checks that two lists have the same elements with the same
+    # multiplicity, in possibly different order.
+    list_1 = list(list_1)
+    list_1.sort()
+    list_2 = list(list_2)
+    list_2.sort()
+    self.assertListEqual(list_1, list_2)
+
   def testKeyFlags(self):
     # Before starting any testing, make sure no flags are already
     # defined for module_foo and module_bar.
@@ -1460,11 +1461,13 @@ class FlagsUnitTest(unittest.TestCase):
       # Part 1. Check that all flags defined by module_foo are key for
       # that module, and similarly for module_bar.
       for module in [module_foo, module_bar]:
-        self.assertListEqual(FLAGS._GetFlagsDefinedByModule(module),
-                             FLAGS._GetKeyFlagsForModule(module))
+        self._AssertListsHaveSameElements(
+            FLAGS._GetFlagsDefinedByModule(module),
+            FLAGS._GetKeyFlagsForModule(module))
         # Also check that each module defined the expected flags.
-        self.assertListEqual(self._GetNamesOfDefinedFlags(module),
-                             module.NamesOfDefinedFlags())
+        self._AssertListsHaveSameElements(
+            self._GetNamesOfDefinedFlags(module),
+            module.NamesOfDefinedFlags())
 
       # Part 2. Check that flags.DECLARE_key_flag works fine.
       # Declare that some flags from module_bar are key for
@@ -1472,12 +1475,14 @@ class FlagsUnitTest(unittest.TestCase):
       module_foo.DeclareKeyFlags()
 
       # Check that module_foo has the expected list of defined flags.
-      self.assertListEqual(self._GetNamesOfDefinedFlags(module_foo),
-                           module_foo.NamesOfDefinedFlags())
+      self._AssertListsHaveSameElements(
+          self._GetNamesOfDefinedFlags(module_foo),
+          module_foo.NamesOfDefinedFlags())
 
       # Check that module_foo has the expected list of key flags.
-      self.assertListEqual(self._GetNamesOfKeyFlags(module_foo),
-                           module_foo.NamesOfDeclaredKeyFlags())
+      self._AssertListsHaveSameElements(
+          self._GetNamesOfKeyFlags(module_foo),
+          module_foo.NamesOfDeclaredKeyFlags())
 
       # Part 3. Check that flags.ADOPT_module_key_flags works fine.
       # Trigger a call to flags.ADOPT_module_key_flags(module_bar)
@@ -1486,9 +1491,10 @@ class FlagsUnitTest(unittest.TestCase):
       module_foo.DeclareExtraKeyFlags()
 
       # Check that module_foo has the expected list of key flags.
-      self.assertListEqual(self._GetNamesOfKeyFlags(module_foo),
-                           module_foo.NamesOfDeclaredKeyFlags() +
-                           module_foo.NamesOfDeclaredExtraKeyFlags())
+      self._AssertListsHaveSameElements(
+          self._GetNamesOfKeyFlags(module_foo),
+          module_foo.NamesOfDeclaredKeyFlags() +
+          module_foo.NamesOfDeclaredExtraKeyFlags())
     finally:
       module_foo.RemoveFlags()
 
@@ -1517,9 +1523,10 @@ class FlagsUnitTest(unittest.TestCase):
 
     # Check that all flags defined by module_bar are key for that
     # module, and that module_bar defined the expected flags.
-    self.assertListEqual(fv._GetFlagsDefinedByModule(module_bar),
-                         fv._GetKeyFlagsForModule(module_bar))
-    self.assertListEqual(
+    self._AssertListsHaveSameElements(
+        fv._GetFlagsDefinedByModule(module_bar),
+        fv._GetKeyFlagsForModule(module_bar))
+    self._AssertListsHaveSameElements(
         self._GetNamesOfDefinedFlags(module_bar, flag_values=fv),
         module_bar.NamesOfDefinedFlags())
 
@@ -1534,21 +1541,31 @@ class FlagsUnitTest(unittest.TestCase):
     flag_name_2 = names_of_flags_defined_by_bar[2]
 
     flags.DECLARE_key_flag(flag_name_0, flag_values=fv)
-    self.assertListEqual(
+    self._AssertListsHaveSameElements(
         self._GetNamesOfKeyFlags(main_module, flag_values=fv),
         [flag_name_0])
 
     flags.DECLARE_key_flag(flag_name_2, flag_values=fv)
-    self.assertListEqual(
+    self._AssertListsHaveSameElements(
         self._GetNamesOfKeyFlags(main_module, flag_values=fv),
         [flag_name_0, flag_name_2])
 
+    # Try with a special (not user-defined) flag too:
+    flags.DECLARE_key_flag('undefok', flag_values=fv)
+    self._AssertListsHaveSameElements(
+        self._GetNamesOfKeyFlags(main_module, flag_values=fv),
+        [flag_name_0, flag_name_2, 'undefok'])
+
     flags.ADOPT_module_key_flags(module_bar, flag_values=fv)
-    key_flags = self._GetNamesOfKeyFlags(main_module, flag_values=fv)
-    # Order is irrelevant; hence, we sort both lists before comparison.
-    key_flags.sort()
-    names_of_flags_defined_by_bar.sort()
-    self.assertListEqual(key_flags, names_of_flags_defined_by_bar)
+    self._AssertListsHaveSameElements(
+        self._GetNamesOfKeyFlags(main_module, flag_values=fv),
+        names_of_flags_defined_by_bar + ['undefok'])
+
+    # Adopt key flags from the module google3.pyglib.flags itself.
+    flags.ADOPT_module_key_flags(flags, flag_values=fv)
+    self._AssertListsHaveSameElements(
+        self._GetNamesOfKeyFlags(main_module, flag_values=fv),
+        names_of_flags_defined_by_bar + ['flagfile', 'undefok'])
 
   def testMainModuleHelpWithKeyFlags(self):
     # Similar to test_main_module_help, but this time we make sure to
@@ -1669,6 +1686,31 @@ class FlagsUnitTest(unittest.TestCase):
     self.assertEqual(
         global_dict['module_name'],
         'test_module_bar')
+
+  def test_GetCallingModuleWithIteritemsError(self):
+    # This test checks that _GetCallingModule is using
+    # sys.modules.items(), instead of .iteritems().
+    orig_sys_modules = sys.modules
+
+    # Mock sys.modules: simulates error produced by importing a module
+    # in paralel with our iteration over sys.modules.iteritems().
+    class SysModulesMock(dict):
+      def __init__(self, original_content):
+        dict.__init__(self, original_content)
+
+      def iteritems(self):
+        # Any dictionary method is fine, but not .iteritems().
+        raise RuntimeError('dictionary changed size during iteration')
+
+    sys.modules = SysModulesMock(orig_sys_modules)
+    try:
+      # _GetCallingModule should still work as expected:
+      self.assertEqual(flags._GetCallingModule(), sys.argv[0])
+      self.assertEqual(
+          module_foo.GetModuleName(),
+          'test_module_foo')
+    finally:
+      sys.modules = orig_sys_modules
 
 
 def main():

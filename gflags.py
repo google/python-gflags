@@ -330,6 +330,8 @@ except NameError:
 _RUNNING_PYCHECKER = 'pychecker.python' in sys.modules
 
 
+# TODO(salcianu): rename this as _GetCallingModuleName().  Same for
+# _GetMainModule().
 def _GetCallingModule():
   """Returns the name of the module that's calling into this module.
 
@@ -339,10 +341,16 @@ def _GetCallingModule():
   # Walk down the stack to find the first globals dict that's not ours.
   for depth in range(1, sys.getrecursionlimit()):
     if not sys._getframe(depth).f_globals is globals():
-      module_name = __GetModuleName(sys._getframe(depth).f_globals)
+      globals_for_frame = sys._getframe(depth).f_globals
+      module_name = _GetModuleObjectAndName(globals_for_frame)[1]
       if module_name is not None:
         return module_name
   raise AssertionError("No module was found")
+
+
+def _GetThisModuleObjectAndName():
+  """Returns: (module object, module name) for this module."""
+  return _GetModuleObjectAndName(globals())
 
 
 # module exceptions:
@@ -353,6 +361,17 @@ class FlagsError(Exception):
 
 class DuplicateFlag(FlagsError):
   """Raised if there is a flag naming conflict."""
+  pass
+
+
+class DuplicateFlagCannotPropagateNoneToSwig(DuplicateFlag):
+  """Special case of DuplicateFlag -- SWIG flag value can't be set to None.
+
+  This can be raised when a duplicate flag is created. Even if allow_override is
+  True, we still abort if the new value is None, because it's currently
+  impossible to pass None default value back to SWIG. See FlagValues.SetDefault
+  for details.
+  """
   pass
 
 
@@ -586,23 +605,29 @@ def DocToHelp(doc):
   return doc
 
 
-def __GetModuleName(globals_dict):
-  """Given a globals dict, returns the name of the module that defines it.
+def _GetModuleObjectAndName(globals_dict):
+  """Returns the module that defines a global environment, and its name.
 
   Args:
     globals_dict: A dictionary that should correspond to an environment
       providing the values of the globals.
 
   Returns:
-    A string (the name of the module) or None (if the module could not
-    be identified.
+    A pair consisting of (1) module object and (2) module name (a
+    string).  Returns (None, None) if the module could not be
+    identified.
   """
-  for name, module in sys.modules.iteritems():
+  # The use of .items() (instead of .iteritems()) is NOT a mistake: if
+  # a parallel thread imports a module while we iterate over
+  # .iteritems() (not nice, but possible), we get a RuntimeError ...
+  # Hence, we use the slightly slower but safer .items().
+  for name, module in sys.modules.items():
     if getattr(module, '__dict__', None) is globals_dict:
       if name == '__main__':
-        return sys.argv[0]
-      return name
-  return None
+        # Pick a more informative name for the main module.
+        name = sys.argv[0]
+      return (module, name)
+  return (None, None)
 
 
 def _GetMainModule():
@@ -611,7 +636,7 @@ def _GetMainModule():
     try:
       globals_of_main = sys._getframe(depth).f_globals
     except ValueError:
-      return __GetModuleName(globals_of_main)
+      return _GetModuleObjectAndName(globals_of_main)[1]
   raise AssertionError("No module was found")
 
 
@@ -1601,7 +1626,7 @@ class Flag:
     # pass None to a C++ flag.  See swig_flags.Init() for details on
     # this behavior.
     if value is None and self.allow_override:
-      raise DuplicateFlag(self.name)
+      raise DuplicateFlagCannotPropagateNoneToSwig(self.name)
 
     self.default = value
     self.Unparse()
@@ -1754,7 +1779,8 @@ def DEFINE_flag(flag, flag_values=FLAGS):
     flag_values._RegisterFlagByModule(_GetCallingModule(), flag)
 
 
-def _InternalDeclareKeyFlags(flag_names, flag_values=FLAGS):
+def _InternalDeclareKeyFlags(flag_names,
+                             flag_values=FLAGS, key_flag_values=None):
   """Declares a flag as key for the calling module.
 
   Internal function.  User code should call DECLARE_key_flag or
@@ -1763,20 +1789,28 @@ def _InternalDeclareKeyFlags(flag_names, flag_values=FLAGS):
   Args:
     flag_names: A list of strings that are names of already-registered
       Flag objects.
-    flag_values: A FlagValues object.  This should almost never need
-      to be overridden.
+    flag_values: A FlagValues object that the flags listed in
+      flag_names have registered with (the value of the flag_values
+      argument from the DEFINE_* calls that defined those flags).
+      This should almost never need to be overridden.
+    key_flag_values: A FlagValues object that (among possibly many
+      other things) keeps track of the key flags for each module.
+      Default None means "same as flag_values".  This should almost
+      never need to be overridden.
 
   Raises:
     UnrecognizedFlagError: when we refer to a flag that was not
       defined yet.
   """
+  key_flag_values = key_flag_values or flag_values
+
   module = _GetCallingModule()
 
   for flag_name in flag_names:
     if flag_name not in flag_values:
       raise UnrecognizedFlagError(flag_name)
     flag = flag_values.FlagDict()[flag_name]
-    flag_values._RegisterKeyFlagForModule(module, flag)
+    key_flag_values._RegisterKeyFlagForModule(module, flag)
 
 
 def DECLARE_key_flag(flag_name, flag_values=FLAGS):
@@ -1799,6 +1833,15 @@ def DECLARE_key_flag(flag_name, flag_values=FLAGS):
     flag_values: A FlagValues object.  This should almost never
       need to be overridden.
   """
+  if flag_name in _SPECIAL_FLAGS:
+    # Take care of the special flags, e.g., --flagfile, --undefok.
+    # These flags are defined in _SPECIAL_FLAGS, and are treated
+    # specially during flag parsing, taking precedence over the
+    # user-defined flags.
+    _InternalDeclareKeyFlags([flag_name],
+                             flag_values=_SPECIAL_FLAGS,
+                             key_flag_values=flag_values)
+    return
   _InternalDeclareKeyFlags([flag_name], flag_values=flag_values)
 
 
@@ -1823,6 +1866,17 @@ def ADOPT_module_key_flags(module, flag_values=FLAGS):
   _InternalDeclareKeyFlags(
       [f.name for f in flag_values._GetKeyFlagsForModule(module.__name__)],
       flag_values=flag_values)
+  # If module is this flag module, take _SPECIAL_FLAGS into account.
+  if module == _GetThisModuleObjectAndName()[0]:
+    _InternalDeclareKeyFlags(
+        # As we associate flags with _GetCallingModule(), the special
+        # flags defined in this module are incorrectly registered with
+        # a different module.  So, we can't use _GetKeyFlagsForModule.
+        # Instead, we take all flags from _SPECIAL_FLAGS (a private
+        # FlagValues, where no other module should register flags).
+        [f.name for f in _SPECIAL_FLAGS.FlagDict().values()],
+        flag_values=_SPECIAL_FLAGS,
+        key_flag_values=flag_values)
 
 
 #
@@ -2324,6 +2378,7 @@ DEFINE_flag(HelpshortFlag())
 DEFINE_flag(HelpXMLFlag())
 
 # Define special flags here so that help may be generated for them.
+# NOTE: Please do NOT use _SPECIAL_FLAGS from outside this module.
 _SPECIAL_FLAGS = FlagValues()
 
 
