@@ -629,6 +629,12 @@ class FlagsUnitTest(unittest.TestCase):
     self.assertEqual("new1" in FLAGS.FlagDict(), True)
     self.assertEqual("new2" in FLAGS.FlagDict(), True)
 
+    # Then test that removing those flags works
+    FLAGS.RemoveFlagValues(new_flags)
+    self.assertEqual(len(FLAGS.FlagDict()), old_len)
+    self.assertFalse("new1" in FLAGS.FlagDict())
+    self.assertFalse("new2" in FLAGS.FlagDict())
+
     # Make sure AppendFlagValues works with flags with shortnames.
     new_flags = flags.FlagValues()
     flags.DEFINE_boolean("new3", 0, "runhelp n3", flag_values=new_flags)
@@ -642,6 +648,13 @@ class FlagsUnitTest(unittest.TestCase):
     self.assertTrue("new4" in FLAGS.FlagDict())
     self.assertTrue("n4" in FLAGS.FlagDict())
     self.assertEqual(FLAGS.FlagDict()['n4'], FLAGS.FlagDict()['new4'])
+
+    # Then test removing them
+    FLAGS.RemoveFlagValues(new_flags)
+    self.assertEqual(len(FLAGS.FlagDict()), old_len)
+    self.assertFalse("new3" in FLAGS.FlagDict())
+    self.assertFalse("new4" in FLAGS.FlagDict())
+    self.assertFalse("n4" in FLAGS.FlagDict())
 
     # Make sure AppendFlagValues fails on duplicates
     flags.DEFINE_boolean("dup4", 0, "runhelp d41")

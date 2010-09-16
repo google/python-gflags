@@ -330,8 +330,6 @@ except NameError:
 _RUNNING_PYCHECKER = 'pychecker.python' in sys.modules
 
 
-# TODO(salcianu): rename this as _GetCallingModuleName().  Same for
-# _GetMainModule().
 def _GetCallingModule():
   """Returns the name of the module that's calling into this module.
 
@@ -799,6 +797,15 @@ class FlagValues:
       # for its normal name.
       if flag_name == flag.name:
         self[flag_name] = flag
+
+  def RemoveFlagValues(self, flag_values):
+    """Remove flags that were previously appended from another FlagValues.
+
+    Args:
+      flag_values: registry containing flags to remove.
+    """
+    for flag_name in flag_values.FlagDict():
+      self.__delattr__(flag_name)
 
   def __setitem__(self, name, flag):
     """Registers a new flag variable."""
@@ -1666,7 +1673,14 @@ class Flag:
                              inner_indent)
     if self.help:
       _WriteSimpleXMLElement(outfile, 'meaning', self.help, inner_indent)
-    _WriteSimpleXMLElement(outfile, 'default', self.default, inner_indent)
+    # The default flag value can either be represented as a string like on the
+    # command line, or as a Python object.  We serialize this value in the
+    # latter case in order to remain consistent.
+    if self.serializer and not isinstance(self.default, str):
+      default_serialized = self.serializer.Serialize(self.default)
+    else:
+      default_serialized = self.default
+    _WriteSimpleXMLElement(outfile, 'default', default_serialized, inner_indent)
     _WriteSimpleXMLElement(outfile, 'current', self.value, inner_indent)
     _WriteSimpleXMLElement(outfile, 'type', self.Type(), inner_indent)
     # Print extra flag features this flag may have.

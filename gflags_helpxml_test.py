@@ -272,6 +272,21 @@ class WriteFlagHelpInXMLFormatTest(unittest.TestCase):
         ' </flag>\n')
     self._CheckFlagHelpInXML('files', 'tool', expected_output)
 
+  def testListAsDefaultArgument_CommaSeparatedList(self):
+    flags.DEFINE_list('allow_users', ['alice', 'bob'],
+                      'Users with access.', flag_values=self.fv)
+    expected_output = (
+        ' <flag>\n'
+        '   <file>tool</file>\n'
+        '   <name>allow_users</name>\n'
+        '   <meaning>Users with access.</meaning>\n'
+        '   <default>alice,bob</default>\n'
+        '   <current>[\'alice\', \'bob\']</current>\n'
+        '   <type>comma separated list of strings</type>\n'
+        '   <list_separator>\',\'</list_separator>\n'
+        ' </flag>\n')
+    self._CheckFlagHelpInXML('allow_users', 'tool', expected_output)
+
   def testFlagHelpInXML_SpaceSeparatedList(self):
     flags.DEFINE_spaceseplist('dirs', 'src libs bin',
                               'Directories to search.', flag_values=self.fv)
@@ -341,6 +356,16 @@ EXPECTED_HELP_XML_START = """\
 """
 
 EXPECTED_HELP_XML_FOR_FLAGS_FROM_MAIN_MODULE = """\
+  <flag>
+    <key>yes</key>
+    <file>%(main_module_name)s</file>
+    <name>allow_users</name>
+    <meaning>Users with access.</meaning>
+    <default>alice,bob</default>
+    <current>['alice', 'bob']</current>
+    <type>comma separated list of strings</type>
+    <list_separator>','</list_separator>
+  </flag>
   <flag>
     <key>yes</key>
     <file>%(main_module_name)s</file>
@@ -509,6 +534,8 @@ class WriteHelpInXMLFormatTest(unittest.TestCase):
                       'Compiler version to use.', flag_values=fv)
     flags.DEFINE_list('files', 'a.cc,a.h,archive/old.zip',
                       'Files to process.', flag_values=fv)
+    flags.DEFINE_list('allow_users', ['alice', 'bob'],
+                      'Users with access.', flag_values=fv)
     flags.DEFINE_spaceseplist('dirs', 'src libs bins',
                               'Directories to create.', flag_values=fv)
     flags.DEFINE_multistring('to_delete', ['a.cc', 'b.h'],
