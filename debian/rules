@@ -33,7 +33,7 @@ install-python%:
 	dh_testroot
 	dh_clean -k
 	dh_installdirs
-	python$* setup.py install --root=$(CURDIR)/debian/python-gflags
+	python$* setup.py install --root=$(CURDIR)/debian/python-gflags --prefix=/usr
 	# Scripts should not have a .py on the end of them
 	mv $(CURDIR)/debian/python-gflags/usr/bin/gflags2man.py $(CURDIR)/debian/python-gflags/usr/bin/gflags2man
 	# Generate a man file for gflags2man

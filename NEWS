@@ -1,0 +1,19 @@
+==11 October 2010==
+
+I've just released python-gflags 1.4.  This release has only minor
+changes from 1.3, including support for printing flags of a specific
+module, allowing key-flags to work with special flags, somewhat better
+error messaging, and
+[http://python-gflags.googlecode.com/svn/tags/python-gflags-1.4/ChangeLog so forth].
+If 1.3 is working well for you, there's no particular reason to upgrade.
+
+===4 January 2010===
+
+I just released python-gflags 1.3. This is the first python-gflags
+release; it is version 1.3 because this code is forked from the 1.3
+release of google-gflags.
+
+I don't have a tarball or .deb file up quite yet, so for now you will
+have to get the source files by browsing under the 'source'
+tag. Downloadable files will be available soon.
+

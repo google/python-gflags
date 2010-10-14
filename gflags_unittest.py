@@ -1726,6 +1726,85 @@ class FlagsUnitTest(unittest.TestCase):
       sys.modules = orig_sys_modules
 
 
+class FlagsErrorMessagesTest(unittest.TestCase):
+  """Testing special cases for integer and float flags error messages."""
+
+  def setUp(self):
+    # make sure we are using the old, stupid way of parsing flags.
+    FLAGS.UseGnuGetOpt(False)
+    self.flag_values = flags.FlagValues()
+
+  def testIntegerErrorText(self):
+    # Make sure we get proper error text
+    flags.DEFINE_integer('positive', 4, 'non-negative flag', lower_bound=1,
+                         flag_values=self.flag_values)
+    flags.DEFINE_integer('non_negative', 4, 'positive flag', lower_bound=0,
+                         flag_values=self.flag_values)
+    flags.DEFINE_integer('negative', -4, 'negative flag', upper_bound=-1,
+                         flag_values=self.flag_values)
+    flags.DEFINE_integer('non_positive', -4, 'non-positive flag', upper_bound=0,
+                         flag_values=self.flag_values)
+    flags.DEFINE_integer('greater', 19, 'greater-than flag', lower_bound=4,
+                         flag_values=self.flag_values)
+    flags.DEFINE_integer('smaller', -19, 'smaller-than flag', upper_bound=4,
+                         flag_values=self.flag_values)
+    flags.DEFINE_integer('usual', 4, 'usual flag', lower_bound=0,
+                         upper_bound=10000, flag_values=self.flag_values)
+    flags.DEFINE_integer('another_usual', 0, 'usual flag', lower_bound=-1,
+                         upper_bound=1, flag_values=self.flag_values)
+
+    self._CheckErrorMessage('positive', '-4', 'a positive integer')
+    self._CheckErrorMessage('non_negative', '-4', 'a non-negative integer')
+    self._CheckErrorMessage('negative', '0', 'a negative integer')
+    self._CheckErrorMessage('non_positive', '4', 'a non-positive integer')
+    self._CheckErrorMessage('usual', '-4', 'an integer in the range [0, 10000]')
+    self._CheckErrorMessage('another_usual', '4',
+                            'an integer in the range [-1, 1]')
+    self._CheckErrorMessage('greater', '-5', 'integer >= 4')
+    self._CheckErrorMessage('smaller', '5', 'integer <= 4')
+
+  def testFloatErrorText(self):
+    # Make sure we get proper error text
+    flags.DEFINE_float('positive', 4, 'non-negative flag', lower_bound=1,
+                       flag_values=self.flag_values)
+    flags.DEFINE_float('non_negative', 4, 'positive flag', lower_bound=0,
+                       flag_values=self.flag_values)
+    flags.DEFINE_float('negative', -4, 'negative flag', upper_bound=-1,
+                       flag_values=self.flag_values)
+    flags.DEFINE_float('non_positive', -4, 'non-positive flag', upper_bound=0,
+                       flag_values=self.flag_values)
+    flags.DEFINE_float('greater', 19, 'greater-than flag', lower_bound=4,
+                       flag_values=self.flag_values)
+    flags.DEFINE_float('smaller', -19, 'smaller-than flag', upper_bound=4,
+                       flag_values=self.flag_values)
+    flags.DEFINE_float('usual', 4, 'usual flag', lower_bound=0,
+                       upper_bound=10000, flag_values=self.flag_values)
+    flags.DEFINE_float('another_usual', 0, 'usual flag', lower_bound=-1,
+                       upper_bound=1, flag_values=self.flag_values)
+
+    self._CheckErrorMessage('positive', '0.5', 'number >= 1')
+    self._CheckErrorMessage('non_negative', '-4.0', 'a non-negative number')
+    self._CheckErrorMessage('negative', '0.5', 'number <= -1')
+    self._CheckErrorMessage('non_positive', '4.0', 'a non-positive number')
+    self._CheckErrorMessage('usual', '-4.0', 'a number in the range [0, 10000]')
+    self._CheckErrorMessage('another_usual', '4.0',
+                            'a number in the range [-1, 1]')
+    self._CheckErrorMessage('greater', '-5.0', 'number >= 4')
+    self._CheckErrorMessage('smaller', '5.0', 'number <= 4')
+
+  def _CheckErrorMessage(self, flag_name, flag_value, expected_message_suffix):
+    try:
+      second_arg = '--%s=%s' % (flag_name, flag_value)
+      argv = ('./program', second_arg)
+      self.flag_values(argv)
+      raise AssertionError('Bounds exception not raised!')
+    except flags.IllegalFlagValue, e:
+      expected = ('flag --%(name)s=%(value)s: %(value)s is not %(suffix)s' %
+                  {'name': flag_name, 'value': flag_value,
+                   'suffix': expected_message_suffix})
+      self.assertEquals(str(e), expected)
+
+
 def main():
   unittest.main()
 
