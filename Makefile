@@ -52,12 +52,12 @@ dist:
 push:
 	# Send the updates to svn
 	# Upload the source package to code.google.com
-	/home/build/opensource/tools/googlecode_upload.py \
+	- /home/build/opensource/tools/googlecode_upload.py \
 		-p python-gflags ./dist/*
 
 	# Upload the package to PyPi
-	python setup.py sdist upload
-	python setup.py bdist_egg upload
+	- python setup.py sdist upload
+	- python setup.py bdist_egg upload
 
 	# Upload the package to the ppa
 	# FIXME(tansell): dput should run here

@@ -53,25 +53,28 @@ DECLARED_KEY_FLAGS = ['tmod_bar_x', 'tmod_bar_z', 'tmod_bar_t',
                       'flagfile']
 
 
-def DefineFlags():
+def DefineFlags(flag_values=FLAGS):
   """Defines a few flags."""
-  module_bar.DefineFlags()
+  module_bar.DefineFlags(flag_values=flag_values)
   # The 'tmod_foo_' prefix (short for 'test_module_foo') ensures that we
   # have no name clash with existing flags.
-  flags.DEFINE_boolean('tmod_foo_bool', True, 'Boolean flag from module foo.')
-  flags.DEFINE_string('tmod_foo_str', 'default', 'String flag.')
-  flags.DEFINE_integer('tmod_foo_int', 3, 'Sample int flag.')
+  flags.DEFINE_boolean('tmod_foo_bool', True, 'Boolean flag from module foo.',
+                       flag_values=flag_values)
+  flags.DEFINE_string('tmod_foo_str', 'default', 'String flag.',
+                      flag_values=flag_values)
+  flags.DEFINE_integer('tmod_foo_int', 3, 'Sample int flag.',
+                       flag_values=flag_values)
 
 
-def DeclareKeyFlags():
+def DeclareKeyFlags(flag_values=FLAGS):
   """Declares a few key flags."""
   for flag_name in DECLARED_KEY_FLAGS:
-    flags.DECLARE_key_flag(flag_name)
+    flags.DECLARE_key_flag(flag_name, flag_values=flag_values)
 
 
-def DeclareExtraKeyFlags():
+def DeclareExtraKeyFlags(flag_values=FLAGS):
   """Declares some extra key flags."""
-  flags.ADOPT_module_key_flags(module_bar)
+  flags.ADOPT_module_key_flags(module_bar, flag_values=flag_values)
 
 
 def NamesOfDefinedFlags():
@@ -102,11 +105,11 @@ def NamesOfDeclaredExtraKeyFlags():
   return names_of_extra_key_flags
 
 
-def RemoveFlags():
+def RemoveFlags(flag_values=FLAGS):
   """Deletes the flag definitions done by the above DefineFlags()."""
   for flag_name in NamesOfDefinedFlags():
-    module_bar.RemoveOneFlag(flag_name)
-  module_bar.RemoveFlags()
+    module_bar.RemoveOneFlag(flag_name, flag_values=flag_values)
+  module_bar.RemoveFlags(flag_values=flag_values)
 
 
 def GetModuleName():

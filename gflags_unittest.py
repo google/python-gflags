@@ -50,6 +50,14 @@ import test_module_foo as module_foo
 import test_module_bar as module_bar
 import test_module_baz as module_baz
 
+
+def Sorted(lst):
+  """Equivalent of sorted(), but not dependent on python version."""
+  sorted_list = lst[:]
+  sorted_list.sort()
+  return sorted_list
+
+
 def MultiLineEqual(expected_help, help):
   """Returns True if expected_help == help.  Otherwise returns False
   and logs the difference in a human-readable way.
@@ -104,11 +112,7 @@ class FlagsUnitTest(unittest.TestCase):
 
   def assertListEqual(self, list1, list2):
     """Asserts that, when sorted, list1 and list2 are identical."""
-    sorted_list1 = list1[:]
-    sorted_list2 = list2[:]
-    sorted_list1.sort()
-    sorted_list2.sort()
-    self.assertEqual(sorted_list1, sorted_list2)
+    self.assertEqual(Sorted(list1), Sorted(list2))
 
   def assertMultiLineEqual(self, expected, actual):
     self.assert_(MultiLineEqual(expected, actual))
@@ -715,579 +719,6 @@ class FlagsUnitTest(unittest.TestCase):
     except flags.IllegalFlagValue:
       pass
 
-  ################################################
-  # Code to test the flagfile=<> loading behavior
-  ################################################
-  def _SetupTestFiles(self):
-    """ Creates and sets up some dummy flagfile files with bogus flags"""
-
-    # Figure out where to create temporary files
-    tmp_path = '/tmp/flags_unittest'
-    if os.path.exists(tmp_path):
-      shutil.rmtree(tmp_path)
-    os.makedirs(tmp_path)
-
-    try:
-      tmp_flag_file_1 = open((tmp_path + '/UnitTestFile1.tst'), 'w')
-      tmp_flag_file_2 = open((tmp_path + '/UnitTestFile2.tst'), 'w')
-      tmp_flag_file_3 = open((tmp_path + '/UnitTestFile3.tst'), 'w')
-    except IOError, e_msg:
-      print e_msg
-      print 'FAIL\n File Creation problem in Unit Test'
-      sys.exit(1)
-
-    # put some dummy flags in our test files
-    tmp_flag_file_1.write('#A Fake Comment\n')
-    tmp_flag_file_1.write('--UnitTestMessage1=tempFile1!\n')
-    tmp_flag_file_1.write('\n')
-    tmp_flag_file_1.write('--UnitTestNumber=54321\n')
-    tmp_flag_file_1.write('--noUnitTestBoolFlag\n')
-    file_list = [tmp_flag_file_1.name]
-    # this one includes test file 1
-    tmp_flag_file_2.write('//A Different Fake Comment\n')
-    tmp_flag_file_2.write('--flagfile=%s\n' % tmp_flag_file_1.name)
-    tmp_flag_file_2.write('--UnitTestMessage2=setFromTempFile2\n')
-    tmp_flag_file_2.write('\t\t\n')
-    tmp_flag_file_2.write('--UnitTestNumber=6789a\n')
-    file_list.append(tmp_flag_file_2.name)
-    # this file points to itself
-    tmp_flag_file_3.write('--flagfile=%s\n' % tmp_flag_file_3.name)
-    tmp_flag_file_3.write('--UnitTestMessage1=setFromTempFile3\n')
-    tmp_flag_file_3.write('#YAFC\n')
-    tmp_flag_file_3.write('--UnitTestBoolFlag\n')
-    file_list.append(tmp_flag_file_3.name)
-
-    tmp_flag_file_1.close()
-    tmp_flag_file_2.close()
-    tmp_flag_file_3.close()
-
-    return file_list # these are just the file names
-  # end SetupFiles def
-
-  def _RemoveTestFiles(self, tmp_file_list):
-    """Closes the files we just created.  tempfile deletes them for us """
-    for file_name in tmp_file_list:
-      try:
-        os.remove(file_name)
-      except OSError, e_msg:
-        print '%s\n, Problem deleting test file' % e_msg
-  #end RemoveTestFiles def
-
-  def __DeclareSomeFlags(self):
-    flags.DEFINE_string('UnitTestMessage1', 'Foo!', 'You Add Here.')
-    flags.DEFINE_string('UnitTestMessage2', 'Bar!', 'Hello, Sailor!')
-    flags.DEFINE_boolean('UnitTestBoolFlag', 0, 'Some Boolean thing')
-    flags.DEFINE_integer('UnitTestNumber', 12345, 'Some integer',
-                         lower_bound=0)
-    flags.DEFINE_list('UnitTestList', "1,2,3", 'Some list')
-
-  def _UndeclareSomeFlags(self):
-    FLAGS.__delattr__('UnitTestMessage1')
-    FLAGS.__delattr__('UnitTestMessage2')
-    FLAGS.__delattr__('UnitTestBoolFlag')
-    FLAGS.__delattr__('UnitTestNumber')
-    FLAGS.__delattr__('UnitTestList')
-
-  def _ReadFlagsFromFiles(self, argv, force_gnu):
-    return argv[:1] + FLAGS.ReadFlagsFromFiles(argv[1:], force_gnu=force_gnu)
-
-  #### Flagfile Unit Tests ####
-  def testMethod_flagfiles_1(self):
-    """ Test trivial case with no flagfile based options. """
-    self.__DeclareSomeFlags()
-    try:
-      fake_cmd_line = 'fooScript --UnitTestBoolFlag'
-      fake_argv = fake_cmd_line.split(' ')
-      FLAGS(fake_argv)
-      self.assertEqual( FLAGS.UnitTestBoolFlag, 1)
-      self.assertEqual( fake_argv, self._ReadFlagsFromFiles(fake_argv, False))
-    finally:
-      self._UndeclareSomeFlags()
-  # end testMethodOne
-
-  def testMethod_flagfiles_2(self):
-    """Tests parsing one file + arguments off simulated argv"""
-    self.__DeclareSomeFlags()
-    try:
-      tmp_files = self._SetupTestFiles()
-      # specify our temp file on the fake cmd line
-      fake_cmd_line = 'fooScript --q --flagfile=%s' % tmp_files[0]
-      fake_argv = fake_cmd_line.split(' ')
-
-      # We should see the original cmd line with the file's contents spliced in.
-      # Note that these will be in REVERSE order from order encountered in file
-      # This is done so arguements we encounter sooner will have priority.
-      expected_results = ['fooScript',
-                            '--UnitTestMessage1=tempFile1!',
-                            '--UnitTestNumber=54321',
-                            '--noUnitTestBoolFlag',
-                            '--q']
-      test_results = self._ReadFlagsFromFiles(fake_argv, False)
-      self.assertEqual(expected_results, test_results)
-    finally:
-      self._RemoveTestFiles(tmp_files)
-      self._UndeclareSomeFlags()
-  # end testTwo def
-
-  def testMethod_flagfiles_3(self):
-    """Tests parsing nested files + arguments of simulated argv"""
-    self.__DeclareSomeFlags()
-    try:
-      tmp_files = self._SetupTestFiles()
-      # specify our temp file on the fake cmd line
-      fake_cmd_line = ('fooScript --UnitTestNumber=77 --flagfile=%s'
-                       % tmp_files[1])
-      fake_argv = fake_cmd_line.split(' ')
-
-      expected_results = ['fooScript',
-                            '--UnitTestMessage1=tempFile1!',
-                            '--UnitTestNumber=54321',
-                            '--noUnitTestBoolFlag',
-                            '--UnitTestMessage2=setFromTempFile2',
-                            '--UnitTestNumber=6789a',
-                            '--UnitTestNumber=77']
-      test_results = self._ReadFlagsFromFiles(fake_argv, False)
-      self.assertEqual(expected_results, test_results)
-    finally:
-      self._RemoveTestFiles(tmp_files)
-      self._UndeclareSomeFlags()
-  # end testThree def
-
-  def testMethod_flagfiles_4(self):
-    """Tests parsing self-referential files + arguments of simulated argv.
-      This test should print a warning to stderr of some sort.
-    """
-    self.__DeclareSomeFlags()
-    try:
-      tmp_files = self._SetupTestFiles()
-      # specify our temp file on the fake cmd line
-      fake_cmd_line = ('fooScript --flagfile=%s --noUnitTestBoolFlag'
-                       % tmp_files[2])
-      fake_argv = fake_cmd_line.split(' ')
-      expected_results = ['fooScript',
-                            '--UnitTestMessage1=setFromTempFile3',
-                            '--UnitTestBoolFlag',
-                            '--noUnitTestBoolFlag' ]
-
-      test_results = self._ReadFlagsFromFiles(fake_argv, False)
-      self.assertEqual(expected_results, test_results)
-    finally:
-      self._RemoveTestFiles(tmp_files)
-      self._UndeclareSomeFlags()
-
-  def testMethod_flagfiles_5(self):
-    """Test that --flagfile parsing respects the '--' end-of-options marker."""
-    self.__DeclareSomeFlags()
-    try:
-      tmp_files = self._SetupTestFiles()
-      # specify our temp file on the fake cmd line
-      fake_cmd_line = 'fooScript --SomeFlag -- --flagfile=%s' % tmp_files[0]
-      fake_argv = fake_cmd_line.split(' ')
-      expected_results = ['fooScript',
-                          '--SomeFlag',
-                          '--',
-                          '--flagfile=%s' % tmp_files[0]]
-
-      test_results = self._ReadFlagsFromFiles(fake_argv, False)
-      self.assertEqual(expected_results, test_results)
-    finally:
-      self._RemoveTestFiles(tmp_files)
-      self._UndeclareSomeFlags()
-
-  def testMethod_flagfiles_6(self):
-    """Test that --flagfile parsing stops at non-options (non-GNU behavior)."""
-    self.__DeclareSomeFlags()
-    try:
-      tmp_files = self._SetupTestFiles()
-      # specify our temp file on the fake cmd line
-      fake_cmd_line = ('fooScript --SomeFlag some_arg --flagfile=%s'
-                       % tmp_files[0])
-      fake_argv = fake_cmd_line.split(' ')
-      expected_results = ['fooScript',
-                          '--SomeFlag',
-                          'some_arg',
-                          '--flagfile=%s' % tmp_files[0]]
-
-      test_results = self._ReadFlagsFromFiles(fake_argv, False)
-      self.assertEqual(expected_results, test_results)
-    finally:
-      self._RemoveTestFiles(tmp_files)
-      self._UndeclareSomeFlags()
-
-  def testMethod_flagfiles_7(self):
-    """Test that --flagfile parsing skips over a non-option (GNU behavior)."""
-    self.__DeclareSomeFlags()
-    try:
-      FLAGS.UseGnuGetOpt()
-      tmp_files = self._SetupTestFiles()
-      # specify our temp file on the fake cmd line
-      fake_cmd_line = ('fooScript --SomeFlag some_arg --flagfile=%s'
-                       % tmp_files[0])
-      fake_argv = fake_cmd_line.split(' ')
-      expected_results = ['fooScript',
-                          '--UnitTestMessage1=tempFile1!',
-                          '--UnitTestNumber=54321',
-                          '--noUnitTestBoolFlag',
-                          '--SomeFlag',
-                          'some_arg']
-
-      test_results = self._ReadFlagsFromFiles(fake_argv, False)
-      self.assertEqual(expected_results, test_results)
-    finally:
-      self._RemoveTestFiles(tmp_files)
-      self._UndeclareSomeFlags()
-
-  def testMethod_flagfiles_8(self):
-    """Test that --flagfile parsing respects force_gnu=True."""
-    self.__DeclareSomeFlags()
-    try:
-      tmp_files = self._SetupTestFiles()
-      # specify our temp file on the fake cmd line
-      fake_cmd_line = ('fooScript --SomeFlag some_arg --flagfile=%s'
-                       % tmp_files[0])
-      fake_argv = fake_cmd_line.split(' ')
-      expected_results = ['fooScript',
-                          '--UnitTestMessage1=tempFile1!',
-                          '--UnitTestNumber=54321',
-                          '--noUnitTestBoolFlag',
-                          '--SomeFlag',
-                          'some_arg']
-
-      test_results = self._ReadFlagsFromFiles(fake_argv, True)
-      self.assertEqual(expected_results, test_results)
-    finally:
-      self._RemoveTestFiles(tmp_files)
-      self._UndeclareSomeFlags()
-
-  def test_flagfiles_user_path_expansion(self):
-    """Test that user directory referenced paths (ie. ~/foo) are correctly
-      expanded.  This test depends on whatever account's running the unit test
-      to have read/write access to their own home directory, otherwise it'll
-      FAIL.
-    """
-    self.__DeclareSomeFlags()
-    fake_flagfile_item_style_1 = '--flagfile=~/foo.file'
-    fake_flagfile_item_style_2 = '-flagfile=~/foo.file'
-
-    expected_results = os.path.expanduser('~/foo.file')
-
-    test_results = FLAGS.ExtractFilename(fake_flagfile_item_style_1)
-    self.assertEqual(expected_results, test_results)
-
-    test_results = FLAGS.ExtractFilename(fake_flagfile_item_style_2)
-    self.assertEqual(expected_results, test_results)
-
-    self._UndeclareSomeFlags()
-
-  # end testFour def
-
-  def test_no_touchy_non_flags(self):
-    """
-    Test that the flags parser does not mutilate arguments which are
-    not supposed to be flags
-    """
-    self.__DeclareSomeFlags()
-    fake_argv = ['fooScript', '--UnitTestBoolFlag',
-                 'command', '--command_arg1', '--UnitTestBoom', '--UnitTestB']
-    argv = FLAGS(fake_argv)
-    self.assertEqual(argv, fake_argv[:1] + fake_argv[2:])
-    self._UndeclareSomeFlags()
-
-  def test_parse_flags_after_args_if_using_gnu_getopt(self):
-    """
-    Test that flags given after arguments are parsed if using gnu_getopt.
-    """
-    self.__DeclareSomeFlags()
-    FLAGS.UseGnuGetOpt()
-    fake_argv = ['fooScript', '--UnitTestBoolFlag',
-                 'command', '--UnitTestB']
-    argv = FLAGS(fake_argv)
-    self.assertEqual(argv, ['fooScript', 'command'])
-    self._UndeclareSomeFlags()
-
-  def test_SetDefault(self):
-    """
-    Test changing flag defaults.
-    """
-    self.__DeclareSomeFlags()
-    # Test that SetDefault changes both the default and the value,
-    # and that the value is changed when one is given as an option.
-    FLAGS['UnitTestMessage1'].SetDefault('New value')
-    self.assertEqual(FLAGS.UnitTestMessage1, 'New value')
-    self.assertEqual(FLAGS['UnitTestMessage1'].default_as_str,"'New value'")
-    FLAGS([ 'dummyscript', '--UnitTestMessage1=Newer value' ])
-    self.assertEqual(FLAGS.UnitTestMessage1, 'Newer value')
-
-    # Test that setting the default to None works correctly.
-    FLAGS['UnitTestNumber'].SetDefault(None)
-    self.assertEqual(FLAGS.UnitTestNumber, None)
-    self.assertEqual(FLAGS['UnitTestNumber'].default_as_str, None)
-    FLAGS([ 'dummyscript', '--UnitTestNumber=56' ])
-    self.assertEqual(FLAGS.UnitTestNumber, 56)
-
-    # Test that setting the default to zero works correctly.
-    FLAGS['UnitTestNumber'].SetDefault(0)
-    self.assertEqual(FLAGS.UnitTestNumber, 0)
-    self.assertEqual(FLAGS['UnitTestNumber'].default_as_str, "'0'")
-    FLAGS([ 'dummyscript', '--UnitTestNumber=56' ])
-    self.assertEqual(FLAGS.UnitTestNumber, 56)
-
-    # Test that setting the default to "" works correctly.
-    FLAGS['UnitTestMessage1'].SetDefault("")
-    self.assertEqual(FLAGS.UnitTestMessage1, "")
-    self.assertEqual(FLAGS['UnitTestMessage1'].default_as_str, "''")
-    FLAGS([ 'dummyscript', '--UnitTestMessage1=fifty-six' ])
-    self.assertEqual(FLAGS.UnitTestMessage1, "fifty-six")
-
-    # Test that setting the default to false works correctly.
-    FLAGS['UnitTestBoolFlag'].SetDefault(False)
-    self.assertEqual(FLAGS.UnitTestBoolFlag, False)
-    self.assertEqual(FLAGS['UnitTestBoolFlag'].default_as_str, "'false'")
-    FLAGS([ 'dummyscript', '--UnitTestBoolFlag=true' ])
-    self.assertEqual(FLAGS.UnitTestBoolFlag, True)
-
-    # Test that setting a list default works correctly.
-    FLAGS['UnitTestList'].SetDefault('4,5,6')
-    self.assertEqual(FLAGS.UnitTestList, ['4', '5', '6'])
-    self.assertEqual(FLAGS['UnitTestList'].default_as_str, "'4,5,6'")
-    FLAGS([ 'dummyscript', '--UnitTestList=7,8,9' ])
-    self.assertEqual(FLAGS.UnitTestList, ['7', '8', '9'])
-
-    # Test that setting invalid defaults raises exceptions
-    self.assertRaises(flags.IllegalFlagValue,
-                      FLAGS['UnitTestNumber'].SetDefault, 'oops')
-    self.assertRaises(flags.IllegalFlagValue,
-                      FLAGS['UnitTestNumber'].SetDefault, -1)
-    self.assertRaises(flags.IllegalFlagValue,
-                      FLAGS['UnitTestBoolFlag'].SetDefault, 'oops')
-
-    self._UndeclareSomeFlags()
-
-  def testMethod_ShortestUniquePrefixes(self):
-    """
-    Test FlagValues.ShortestUniquePrefixes
-    """
-    flags.DEFINE_string('a', '', '')
-    flags.DEFINE_string('abc', '', '')
-    flags.DEFINE_string('common_a_string', '', '')
-    flags.DEFINE_boolean('common_b_boolean', 0, '')
-    flags.DEFINE_boolean('common_c_boolean', 0, '')
-    flags.DEFINE_boolean('common', 0, '')
-    flags.DEFINE_integer('commonly', 0, '')
-    flags.DEFINE_boolean('zz', 0, '')
-    flags.DEFINE_integer('nozz', 0, '')
-
-    shorter_flags = FLAGS.ShortestUniquePrefixes(FLAGS.FlagDict())
-
-    expected_results = {'nocommon_b_boolean': 'nocommon_b',
-                        'common_c_boolean': 'common_c',
-                        'common_b_boolean': 'common_b',
-                        'a': 'a',
-                        'abc': 'ab',
-                        'zz': 'z',
-                        'nozz': 'nozz',
-                        'common_a_string': 'common_a',
-                        'commonly': 'commonl',
-                        'nocommon_c_boolean': 'nocommon_c',
-                        'nocommon': 'nocommon',
-                        'common': 'common'}
-
-    for name, shorter in expected_results.iteritems():
-      self.assertEquals(shorter_flags[name], shorter)
-
-    FLAGS.__delattr__('a')
-    FLAGS.__delattr__('abc')
-    FLAGS.__delattr__('common_a_string')
-    FLAGS.__delattr__('common_b_boolean')
-    FLAGS.__delattr__('common_c_boolean')
-    FLAGS.__delattr__('common')
-    FLAGS.__delattr__('commonly')
-    FLAGS.__delattr__('zz')
-    FLAGS.__delattr__('nozz')
-
-  def test_twodasharg_first(self):
-    flags.DEFINE_string("twodash_name", "Bob", "namehelp")
-    flags.DEFINE_string("twodash_blame", "Rob", "blamehelp")
-    argv = ('./program',
-            '--',
-            '--twodash_name=Harry')
-    argv = FLAGS(argv)
-    self.assertEqual('Bob', FLAGS.twodash_name)
-    self.assertEqual(argv[1], '--twodash_name=Harry')
-
-  def test_twodasharg_middle(self):
-    flags.DEFINE_string("twodash2_name", "Bob", "namehelp")
-    flags.DEFINE_string("twodash2_blame", "Rob", "blamehelp")
-    argv = ('./program',
-            '--twodash2_blame=Larry',
-            '--',
-            '--twodash2_name=Harry')
-    argv = FLAGS(argv)
-    self.assertEqual('Bob', FLAGS.twodash2_name)
-    self.assertEqual('Larry', FLAGS.twodash2_blame)
-    self.assertEqual(argv[1], '--twodash2_name=Harry')
-
-  def test_onedasharg_first(self):
-    flags.DEFINE_string("onedash_name", "Bob", "namehelp")
-    flags.DEFINE_string("onedash_blame", "Rob", "blamehelp")
-    argv = ('./program',
-            '-',
-            '--onedash_name=Harry')
-    argv = FLAGS(argv)
-    self.assertEqual(argv[1], '-')
-    # TODO(csilvers): we should still parse --onedash_name=Harry as a
-    # flag, but currently we don't (we stop flag processing as soon as
-    # we see the first non-flag).
-    # - This requires gnu_getopt from Python 2.3+ see FLAGS.UseGnuGetOpt()
-
-  def test_unrecognized_flags(self):
-    # Unknown flag --nosuchflag
-    try:
-      argv = ('./program', '--nosuchflag', '--name=Bob', 'extra')
-      FLAGS(argv)
-      raise AssertionError("Unknown flag exception not raised")
-    except flags.UnrecognizedFlag, e:
-      assert e.flagname == 'nosuchflag'
-
-    # Unknown flag -w (short option)
-    try:
-      argv = ('./program', '-w', '--name=Bob', 'extra')
-      FLAGS(argv)
-      raise AssertionError("Unknown flag exception not raised")
-    except flags.UnrecognizedFlag, e:
-      assert e.flagname == 'w'
-
-    # Unknown flag --nosuchflagwithparam=foo
-    try:
-      argv = ('./program', '--nosuchflagwithparam=foo', '--name=Bob', 'extra')
-      FLAGS(argv)
-      raise AssertionError("Unknown flag exception not raised")
-    except flags.UnrecognizedFlag, e:
-      assert e.flagname == 'nosuchflagwithparam'
-
-    # Allow unknown flag --nosuchflag if specified with undefok
-    argv = ('./program', '--nosuchflag', '--name=Bob',
-            '--undefok=nosuchflag', 'extra')
-    argv = FLAGS(argv)
-    assert len(argv) == 2, "wrong number of arguments pulled"
-    assert argv[0]=='./program', "program name not preserved"
-    assert argv[1]=='extra', "extra argument not preserved"
-
-    # Allow unknown flag --noboolflag if undefok=boolflag is specified
-    argv = ('./program', '--noboolflag', '--name=Bob',
-            '--undefok=boolflag', 'extra')
-    argv = FLAGS(argv)
-    assert len(argv) == 2, "wrong number of arguments pulled"
-    assert argv[0]=='./program', "program name not preserved"
-    assert argv[1]=='extra', "extra argument not preserved"
-
-    # But not if the flagname is misspelled:
-    try:
-      argv = ('./program', '--nosuchflag', '--name=Bob',
-              '--undefok=nosuchfla', 'extra')
-      FLAGS(argv)
-      raise AssertionError("Unknown flag exception not raised")
-    except flags.UnrecognizedFlag, e:
-      assert e.flagname == 'nosuchflag'
-
-    try:
-      argv = ('./program', '--nosuchflag', '--name=Bob',
-              '--undefok=nosuchflagg', 'extra')
-      FLAGS(argv)
-      raise AssertionError("Unknown flag exception not raised")
-    except flags.UnrecognizedFlag:
-      assert e.flagname == 'nosuchflag'
-
-    # Allow unknown short flag -w if specified with undefok
-    argv = ('./program', '-w', '--name=Bob', '--undefok=w', 'extra')
-    argv = FLAGS(argv)
-    assert len(argv) == 2, "wrong number of arguments pulled"
-    assert argv[0]=='./program', "program name not preserved"
-    assert argv[1]=='extra', "extra argument not preserved"
-
-    # Allow unknown flag --nosuchflagwithparam=foo if specified
-    # with undefok
-    argv = ('./program', '--nosuchflagwithparam=foo', '--name=Bob',
-            '--undefok=nosuchflagwithparam', 'extra')
-    argv = FLAGS(argv)
-    assert len(argv) == 2, "wrong number of arguments pulled"
-    assert argv[0]=='./program', "program name not preserved"
-    assert argv[1]=='extra', "extra argument not preserved"
-
-    # Even if undefok specifies multiple flags
-    argv = ('./program', '--nosuchflag', '-w', '--nosuchflagwithparam=foo',
-            '--name=Bob',
-            '--undefok=nosuchflag,w,nosuchflagwithparam',
-            'extra')
-    argv = FLAGS(argv)
-    assert len(argv) == 2, "wrong number of arguments pulled"
-    assert argv[0]=='./program', "program name not preserved"
-    assert argv[1]=='extra', "extra argument not preserved"
-
-    # However, not if undefok doesn't specify the flag
-    try:
-      argv = ('./program', '--nosuchflag', '--name=Bob',
-              '--undefok=another_such', 'extra')
-      FLAGS(argv)
-      raise AssertionError("Unknown flag exception not raised")
-    except flags.UnrecognizedFlag, e:
-      assert e.flagname == 'nosuchflag'
-
-    # Make sure --undefok doesn't mask other option errors.
-    try:
-      # Provide an option requiring a parameter but not giving it one.
-      argv = ('./program', '--undefok=name', '--name')
-      FLAGS(argv)
-      raise AssertionError("Missing option parameter exception not raised")
-    except flags.UnrecognizedFlag:
-      raise AssertionError("Wrong kind of error exception raised")
-    except flags.FlagsError:
-      pass
-
-    # Test --undefok <list>
-    argv = ('./program', '--nosuchflag', '-w', '--nosuchflagwithparam=foo',
-            '--name=Bob',
-            '--undefok',
-            'nosuchflag,w,nosuchflagwithparam',
-            'extra')
-    argv = FLAGS(argv)
-    assert len(argv) == 2, "wrong number of arguments pulled"
-    assert argv[0]=='./program', "program name not preserved"
-    assert argv[1]=='extra', "extra argument not preserved"
-
-  def test_nonglobal_flags(self):
-    """Test use of non-global FlagValues"""
-    nonglobal_flags = flags.FlagValues()
-    flags.DEFINE_string("nonglobal_flag", "Bob", "flaghelp", nonglobal_flags)
-    argv = ('./program',
-            '--nonglobal_flag=Mary',
-            'extra')
-    argv = nonglobal_flags(argv)
-    assert len(argv) == 2, "wrong number of arguments pulled"
-    assert argv[0]=='./program', "program name not preserved"
-    assert argv[1]=='extra', "extra argument not preserved"
-    assert nonglobal_flags['nonglobal_flag'].value == 'Mary'
-
-  def test_unrecognized_nonglobal_flags(self):
-    """Test unrecognized non-global flags"""
-    nonglobal_flags = flags.FlagValues()
-    argv = ('./program',
-            '--nosuchflag')
-    try:
-      argv = nonglobal_flags(argv)
-      raise AssertionError("Unknown flag exception not raised")
-    except flags.UnrecognizedFlag, e:
-      assert e.flagname == 'nosuchflag'
-      pass
-
-    argv = ('./program',
-            '--nosuchflag',
-            '--undefok=nosuchflag')
-
-    argv = nonglobal_flags(argv)
-    assert len(argv) == 1, "wrong number of arguments pulled"
-    assert argv[0]=='./program', "program name not preserved"
-
   def test_module_help(self):
     """Test ModuleHelp()."""
     helpstr = FLAGS.ModuleHelp(module_baz)
@@ -1363,8 +794,561 @@ class FlagsUnitTest(unittest.TestCase):
   -z,--[no]zoom1: runhelp z1
     (default: 'false')"""
 
-    if not MultiLineEqual(expected_help, helpstr):
-      self.fail()
+    self.assertMultiLineEqual(expected_help, helpstr)
+
+
+class LoadFromFlagFileTest(unittest.TestCase):
+  """Testing loading flags from a file and parsing them."""
+
+  def setUp(self):
+    self.flag_values = flags.FlagValues()
+    # make sure we are using the old, stupid way of parsing flags.
+    self.flag_values.UseGnuGetOpt(False)
+    flags.DEFINE_string('UnitTestMessage1', 'Foo!', 'You Add Here.',
+                        flag_values=self.flag_values)
+    flags.DEFINE_string('UnitTestMessage2', 'Bar!', 'Hello, Sailor!',
+                        flag_values=self.flag_values)
+    flags.DEFINE_boolean('UnitTestBoolFlag', 0, 'Some Boolean thing',
+                         flag_values=self.flag_values)
+    flags.DEFINE_integer('UnitTestNumber', 12345, 'Some integer',
+                         lower_bound=0, flag_values=self.flag_values)
+    flags.DEFINE_list('UnitTestList', "1,2,3", 'Some list',
+                      flag_values=self.flag_values)
+    self.files_to_delete = []
+
+  def tearDown(self):
+    self._RemoveTestFiles()
+
+  def _SetupTestFiles(self):
+    """ Creates and sets up some dummy flagfile files with bogus flags"""
+
+    # Figure out where to create temporary files
+    tmp_path = '/tmp/flags_unittest'
+    if os.path.exists(tmp_path):
+      shutil.rmtree(tmp_path)
+    os.makedirs(tmp_path)
+
+    try:
+      tmp_flag_file_1 = open((tmp_path + '/UnitTestFile1.tst'), 'w')
+      tmp_flag_file_2 = open((tmp_path + '/UnitTestFile2.tst'), 'w')
+      tmp_flag_file_3 = open((tmp_path + '/UnitTestFile3.tst'), 'w')
+    except IOError, e_msg:
+      print e_msg
+      print 'FAIL\n File Creation problem in Unit Test'
+      sys.exit(1)
+
+    # put some dummy flags in our test files
+    tmp_flag_file_1.write('#A Fake Comment\n')
+    tmp_flag_file_1.write('--UnitTestMessage1=tempFile1!\n')
+    tmp_flag_file_1.write('\n')
+    tmp_flag_file_1.write('--UnitTestNumber=54321\n')
+    tmp_flag_file_1.write('--noUnitTestBoolFlag\n')
+    file_list = [tmp_flag_file_1.name]
+    # this one includes test file 1
+    tmp_flag_file_2.write('//A Different Fake Comment\n')
+    tmp_flag_file_2.write('--flagfile=%s\n' % tmp_flag_file_1.name)
+    tmp_flag_file_2.write('--UnitTestMessage2=setFromTempFile2\n')
+    tmp_flag_file_2.write('\t\t\n')
+    tmp_flag_file_2.write('--UnitTestNumber=6789a\n')
+    file_list.append(tmp_flag_file_2.name)
+    # this file points to itself
+    tmp_flag_file_3.write('--flagfile=%s\n' % tmp_flag_file_3.name)
+    tmp_flag_file_3.write('--UnitTestMessage1=setFromTempFile3\n')
+    tmp_flag_file_3.write('#YAFC\n')
+    tmp_flag_file_3.write('--UnitTestBoolFlag\n')
+    file_list.append(tmp_flag_file_3.name)
+
+    tmp_flag_file_1.close()
+    tmp_flag_file_2.close()
+    tmp_flag_file_3.close()
+
+    self.files_to_delete = file_list
+
+    return file_list # these are just the file names
+  # end SetupFiles def
+
+  def _RemoveTestFiles(self):
+    """Closes the files we just created.  tempfile deletes them for us """
+    for file_name in self.files_to_delete:
+      try:
+        os.remove(file_name)
+      except OSError, e_msg:
+        print '%s\n, Problem deleting test file' % e_msg
+  #end RemoveTestFiles def
+
+  def _ReadFlagsFromFiles(self, argv, force_gnu):
+    return argv[:1] + self.flag_values.ReadFlagsFromFiles(argv[1:],
+                                                          force_gnu=force_gnu)
+
+  #### Flagfile Unit Tests ####
+  def testMethod_flagfiles_1(self):
+    """ Test trivial case with no flagfile based options. """
+    fake_cmd_line = 'fooScript --UnitTestBoolFlag'
+    fake_argv = fake_cmd_line.split(' ')
+    self.flag_values(fake_argv)
+    self.assertEqual( self.flag_values.UnitTestBoolFlag, 1)
+    self.assertEqual( fake_argv, self._ReadFlagsFromFiles(fake_argv, False))
+
+  # end testMethodOne
+
+  def testMethod_flagfiles_2(self):
+    """Tests parsing one file + arguments off simulated argv"""
+    tmp_files = self._SetupTestFiles()
+    # specify our temp file on the fake cmd line
+    fake_cmd_line = 'fooScript --q --flagfile=%s' % tmp_files[0]
+    fake_argv = fake_cmd_line.split(' ')
+
+    # We should see the original cmd line with the file's contents spliced in.
+    # Note that these will be in REVERSE order from order encountered in file
+    # This is done so arguements we encounter sooner will have priority.
+    expected_results = ['fooScript',
+                          '--UnitTestMessage1=tempFile1!',
+                          '--UnitTestNumber=54321',
+                          '--noUnitTestBoolFlag',
+                          '--q']
+    test_results = self._ReadFlagsFromFiles(fake_argv, False)
+    self.assertEqual(expected_results, test_results)
+  # end testTwo def
+
+  def testMethod_flagfiles_3(self):
+    """Tests parsing nested files + arguments of simulated argv"""
+    tmp_files = self._SetupTestFiles()
+    # specify our temp file on the fake cmd line
+    fake_cmd_line = ('fooScript --UnitTestNumber=77 --flagfile=%s'
+                     % tmp_files[1])
+    fake_argv = fake_cmd_line.split(' ')
+
+    expected_results = ['fooScript',
+                          '--UnitTestMessage1=tempFile1!',
+                          '--UnitTestNumber=54321',
+                          '--noUnitTestBoolFlag',
+                          '--UnitTestMessage2=setFromTempFile2',
+                          '--UnitTestNumber=6789a',
+                          '--UnitTestNumber=77']
+    test_results = self._ReadFlagsFromFiles(fake_argv, False)
+    self.assertEqual(expected_results, test_results)
+  # end testThree def
+
+  def testMethod_flagfiles_4(self):
+    """Tests parsing self-referential files + arguments of simulated argv.
+      This test should print a warning to stderr of some sort.
+    """
+    tmp_files = self._SetupTestFiles()
+    # specify our temp file on the fake cmd line
+    fake_cmd_line = ('fooScript --flagfile=%s --noUnitTestBoolFlag'
+                     % tmp_files[2])
+    fake_argv = fake_cmd_line.split(' ')
+    expected_results = ['fooScript',
+                          '--UnitTestMessage1=setFromTempFile3',
+                          '--UnitTestBoolFlag',
+                          '--noUnitTestBoolFlag' ]
+
+    test_results = self._ReadFlagsFromFiles(fake_argv, False)
+    self.assertEqual(expected_results, test_results)
+
+  def testMethod_flagfiles_5(self):
+    """Test that --flagfile parsing respects the '--' end-of-options marker."""
+    tmp_files = self._SetupTestFiles()
+    # specify our temp file on the fake cmd line
+    fake_cmd_line = 'fooScript --SomeFlag -- --flagfile=%s' % tmp_files[0]
+    fake_argv = fake_cmd_line.split(' ')
+    expected_results = ['fooScript',
+                        '--SomeFlag',
+                        '--',
+                        '--flagfile=%s' % tmp_files[0]]
+
+    test_results = self._ReadFlagsFromFiles(fake_argv, False)
+    self.assertEqual(expected_results, test_results)
+
+  def testMethod_flagfiles_6(self):
+    """Test that --flagfile parsing stops at non-options (non-GNU behavior)."""
+    tmp_files = self._SetupTestFiles()
+    # specify our temp file on the fake cmd line
+    fake_cmd_line = ('fooScript --SomeFlag some_arg --flagfile=%s'
+                     % tmp_files[0])
+    fake_argv = fake_cmd_line.split(' ')
+    expected_results = ['fooScript',
+                        '--SomeFlag',
+                        'some_arg',
+                        '--flagfile=%s' % tmp_files[0]]
+
+    test_results = self._ReadFlagsFromFiles(fake_argv, False)
+    self.assertEqual(expected_results, test_results)
+
+  def testMethod_flagfiles_7(self):
+    """Test that --flagfile parsing skips over a non-option (GNU behavior)."""
+    self.flag_values.UseGnuGetOpt()
+    tmp_files = self._SetupTestFiles()
+    # specify our temp file on the fake cmd line
+    fake_cmd_line = ('fooScript --SomeFlag some_arg --flagfile=%s'
+                     % tmp_files[0])
+    fake_argv = fake_cmd_line.split(' ')
+    expected_results = ['fooScript',
+                        '--UnitTestMessage1=tempFile1!',
+                        '--UnitTestNumber=54321',
+                        '--noUnitTestBoolFlag',
+                        '--SomeFlag',
+                        'some_arg']
+
+    test_results = self._ReadFlagsFromFiles(fake_argv, False)
+    self.assertEqual(expected_results, test_results)
+
+  def testMethod_flagfiles_8(self):
+    """Test that --flagfile parsing respects force_gnu=True."""
+    tmp_files = self._SetupTestFiles()
+    # specify our temp file on the fake cmd line
+    fake_cmd_line = ('fooScript --SomeFlag some_arg --flagfile=%s'
+                     % tmp_files[0])
+    fake_argv = fake_cmd_line.split(' ')
+    expected_results = ['fooScript',
+                        '--UnitTestMessage1=tempFile1!',
+                        '--UnitTestNumber=54321',
+                        '--noUnitTestBoolFlag',
+                        '--SomeFlag',
+                        'some_arg']
+
+    test_results = self._ReadFlagsFromFiles(fake_argv, True)
+    self.assertEqual(expected_results, test_results)
+
+  def test_flagfiles_user_path_expansion(self):
+    """Test that user directory referenced paths (ie. ~/foo) are correctly
+      expanded.  This test depends on whatever account's running the unit test
+      to have read/write access to their own home directory, otherwise it'll
+      FAIL.
+    """
+    fake_flagfile_item_style_1 = '--flagfile=~/foo.file'
+    fake_flagfile_item_style_2 = '-flagfile=~/foo.file'
+
+    expected_results = os.path.expanduser('~/foo.file')
+
+    test_results = self.flag_values.ExtractFilename(fake_flagfile_item_style_1)
+    self.assertEqual(expected_results, test_results)
+
+    test_results = self.flag_values.ExtractFilename(fake_flagfile_item_style_2)
+    self.assertEqual(expected_results, test_results)
+
+  # end testFour def
+
+  def test_no_touchy_non_flags(self):
+    """
+    Test that the flags parser does not mutilate arguments which are
+    not supposed to be flags
+    """
+    fake_argv = ['fooScript', '--UnitTestBoolFlag',
+                 'command', '--command_arg1', '--UnitTestBoom', '--UnitTestB']
+    argv = self.flag_values(fake_argv)
+    self.assertEqual(argv, fake_argv[:1] + fake_argv[2:])
+
+  def test_parse_flags_after_args_if_using_gnu_getopt(self):
+    """
+    Test that flags given after arguments are parsed if using gnu_getopt.
+    """
+    self.flag_values.UseGnuGetOpt()
+    fake_argv = ['fooScript', '--UnitTestBoolFlag',
+                 'command', '--UnitTestB']
+    argv = self.flag_values(fake_argv)
+    self.assertEqual(argv, ['fooScript', 'command'])
+
+  def test_SetDefault(self):
+    """
+    Test changing flag defaults.
+    """
+    # Test that SetDefault changes both the default and the value,
+    # and that the value is changed when one is given as an option.
+    self.flag_values['UnitTestMessage1'].SetDefault('New value')
+    self.assertEqual(self.flag_values.UnitTestMessage1, 'New value')
+    self.assertEqual(self.flag_values['UnitTestMessage1'].default_as_str,
+                     "'New value'")
+    self.flag_values([ 'dummyscript', '--UnitTestMessage1=Newer value' ])
+    self.assertEqual(self.flag_values.UnitTestMessage1, 'Newer value')
+
+    # Test that setting the default to None works correctly.
+    self.flag_values['UnitTestNumber'].SetDefault(None)
+    self.assertEqual(self.flag_values.UnitTestNumber, None)
+    self.assertEqual(self.flag_values['UnitTestNumber'].default_as_str, None)
+    self.flag_values([ 'dummyscript', '--UnitTestNumber=56' ])
+    self.assertEqual(self.flag_values.UnitTestNumber, 56)
+
+    # Test that setting the default to zero works correctly.
+    self.flag_values['UnitTestNumber'].SetDefault(0)
+    self.assertEqual(self.flag_values.UnitTestNumber, 0)
+    self.assertEqual(self.flag_values['UnitTestNumber'].default_as_str, "'0'")
+    self.flag_values([ 'dummyscript', '--UnitTestNumber=56' ])
+    self.assertEqual(self.flag_values.UnitTestNumber, 56)
+
+    # Test that setting the default to "" works correctly.
+    self.flag_values['UnitTestMessage1'].SetDefault("")
+    self.assertEqual(self.flag_values.UnitTestMessage1, "")
+    self.assertEqual(self.flag_values['UnitTestMessage1'].default_as_str, "''")
+    self.flag_values([ 'dummyscript', '--UnitTestMessage1=fifty-six' ])
+    self.assertEqual(self.flag_values.UnitTestMessage1, "fifty-six")
+
+    # Test that setting the default to false works correctly.
+    self.flag_values['UnitTestBoolFlag'].SetDefault(False)
+    self.assertEqual(self.flag_values.UnitTestBoolFlag, False)
+    self.assertEqual(self.flag_values['UnitTestBoolFlag'].default_as_str,
+                     "'false'")
+    self.flag_values([ 'dummyscript', '--UnitTestBoolFlag=true' ])
+    self.assertEqual(self.flag_values.UnitTestBoolFlag, True)
+
+    # Test that setting a list default works correctly.
+    self.flag_values['UnitTestList'].SetDefault('4,5,6')
+    self.assertEqual(self.flag_values.UnitTestList, ['4', '5', '6'])
+    self.assertEqual(self.flag_values['UnitTestList'].default_as_str, "'4,5,6'")
+    self.flag_values([ 'dummyscript', '--UnitTestList=7,8,9' ])
+    self.assertEqual(self.flag_values.UnitTestList, ['7', '8', '9'])
+
+    # Test that setting invalid defaults raises exceptions
+    self.assertRaises(flags.IllegalFlagValue,
+                      self.flag_values['UnitTestNumber'].SetDefault, 'oops')
+    self.assertRaises(flags.IllegalFlagValue,
+                      self.flag_values['UnitTestNumber'].SetDefault, -1)
+    self.assertRaises(flags.IllegalFlagValue,
+                      self.flag_values['UnitTestBoolFlag'].SetDefault, 'oops')
+
+
+class FlagsParsingTest(unittest.TestCase):
+  """Testing different aspects of parsing: '-f' vs '--flag', etc."""
+
+  def setUp(self):
+    self.flag_values = flags.FlagValues()
+
+  def testMethod_ShortestUniquePrefixes(self):
+    """Test FlagValues.ShortestUniquePrefixes"""
+
+    flags.DEFINE_string('a', '', '', flag_values=self.flag_values)
+    flags.DEFINE_string('abc', '', '', flag_values=self.flag_values)
+    flags.DEFINE_string('common_a_string', '', '', flag_values=self.flag_values)
+    flags.DEFINE_boolean('common_b_boolean', 0, '',
+                         flag_values=self.flag_values)
+    flags.DEFINE_boolean('common_c_boolean', 0, '',
+                         flag_values=self.flag_values)
+    flags.DEFINE_boolean('common', 0, '', flag_values=self.flag_values)
+    flags.DEFINE_integer('commonly', 0, '', flag_values=self.flag_values)
+    flags.DEFINE_boolean('zz', 0, '', flag_values=self.flag_values)
+    flags.DEFINE_integer('nozz', 0, '', flag_values=self.flag_values)
+
+    shorter_flags = self.flag_values.ShortestUniquePrefixes(
+        self.flag_values.FlagDict())
+
+    expected_results = {'nocommon_b_boolean': 'nocommon_b',
+                        'common_c_boolean': 'common_c',
+                        'common_b_boolean': 'common_b',
+                        'a': 'a',
+                        'abc': 'ab',
+                        'zz': 'z',
+                        'nozz': 'nozz',
+                        'common_a_string': 'common_a',
+                        'commonly': 'commonl',
+                        'nocommon_c_boolean': 'nocommon_c',
+                        'nocommon': 'nocommon',
+                        'common': 'common'}
+
+    for name, shorter in expected_results.iteritems():
+      self.assertEquals(shorter_flags[name], shorter)
+
+    self.flag_values.__delattr__('a')
+    self.flag_values.__delattr__('abc')
+    self.flag_values.__delattr__('common_a_string')
+    self.flag_values.__delattr__('common_b_boolean')
+    self.flag_values.__delattr__('common_c_boolean')
+    self.flag_values.__delattr__('common')
+    self.flag_values.__delattr__('commonly')
+    self.flag_values.__delattr__('zz')
+    self.flag_values.__delattr__('nozz')
+
+  def test_twodasharg_first(self):
+    flags.DEFINE_string("twodash_name", "Bob", "namehelp",
+                        flag_values=self.flag_values)
+    flags.DEFINE_string("twodash_blame", "Rob", "blamehelp",
+                        flag_values=self.flag_values)
+    argv = ('./program',
+            '--',
+            '--twodash_name=Harry')
+    argv = self.flag_values(argv)
+    self.assertEqual('Bob', self.flag_values.twodash_name)
+    self.assertEqual(argv[1], '--twodash_name=Harry')
+
+  def test_twodasharg_middle(self):
+    flags.DEFINE_string("twodash2_name", "Bob", "namehelp",
+                        flag_values=self.flag_values)
+    flags.DEFINE_string("twodash2_blame", "Rob", "blamehelp",
+                        flag_values=self.flag_values)
+    argv = ('./program',
+            '--twodash2_blame=Larry',
+            '--',
+            '--twodash2_name=Harry')
+    argv = self.flag_values(argv)
+    self.assertEqual('Bob', self.flag_values.twodash2_name)
+    self.assertEqual('Larry', self.flag_values.twodash2_blame)
+    self.assertEqual(argv[1], '--twodash2_name=Harry')
+
+  def test_onedasharg_first(self):
+    flags.DEFINE_string("onedash_name", "Bob", "namehelp",
+                        flag_values=self.flag_values)
+    flags.DEFINE_string("onedash_blame", "Rob", "blamehelp",
+                        flag_values=self.flag_values)
+    argv = ('./program',
+            '-',
+            '--onedash_name=Harry')
+    argv = self.flag_values(argv)
+    self.assertEqual(argv[1], '-')
+    # TODO(csilvers): we should still parse --onedash_name=Harry as a
+    # flag, but currently we don't (we stop flag processing as soon as
+    # we see the first non-flag).
+    # - This requires gnu_getopt from Python 2.3+ see FLAGS.UseGnuGetOpt()
+
+  def test_unrecognized_flags(self):
+    flags.DEFINE_string("name", "Bob", "namehelp", flag_values=self.flag_values)
+    # Unknown flag --nosuchflag
+    try:
+      argv = ('./program', '--nosuchflag', '--name=Bob', 'extra')
+      self.flag_values(argv)
+      raise AssertionError("Unknown flag exception not raised")
+    except flags.UnrecognizedFlag, e:
+      assert e.flagname == 'nosuchflag'
+
+    # Unknown flag -w (short option)
+    try:
+      argv = ('./program', '-w', '--name=Bob', 'extra')
+      self.flag_values(argv)
+      raise AssertionError("Unknown flag exception not raised")
+    except flags.UnrecognizedFlag, e:
+      assert e.flagname == 'w'
+
+    # Unknown flag --nosuchflagwithparam=foo
+    try:
+      argv = ('./program', '--nosuchflagwithparam=foo', '--name=Bob', 'extra')
+      self.flag_values(argv)
+      raise AssertionError("Unknown flag exception not raised")
+    except flags.UnrecognizedFlag, e:
+      assert e.flagname == 'nosuchflagwithparam'
+
+    # Allow unknown flag --nosuchflag if specified with undefok
+    argv = ('./program', '--nosuchflag', '--name=Bob',
+            '--undefok=nosuchflag', 'extra')
+    argv = self.flag_values(argv)
+    assert len(argv) == 2, "wrong number of arguments pulled"
+    assert argv[0]=='./program', "program name not preserved"
+    assert argv[1]=='extra', "extra argument not preserved"
+
+    # Allow unknown flag --noboolflag if undefok=boolflag is specified
+    argv = ('./program', '--noboolflag', '--name=Bob',
+            '--undefok=boolflag', 'extra')
+    argv = self.flag_values(argv)
+    assert len(argv) == 2, "wrong number of arguments pulled"
+    assert argv[0]=='./program', "program name not preserved"
+    assert argv[1]=='extra', "extra argument not preserved"
+
+    # But not if the flagname is misspelled:
+    try:
+      argv = ('./program', '--nosuchflag', '--name=Bob',
+              '--undefok=nosuchfla', 'extra')
+      self.flag_values(argv)
+      raise AssertionError("Unknown flag exception not raised")
+    except flags.UnrecognizedFlag, e:
+      assert e.flagname == 'nosuchflag'
+
+    try:
+      argv = ('./program', '--nosuchflag', '--name=Bob',
+              '--undefok=nosuchflagg', 'extra')
+      self.flag_values(argv)
+      raise AssertionError("Unknown flag exception not raised")
+    except flags.UnrecognizedFlag:
+      assert e.flagname == 'nosuchflag'
+
+    # Allow unknown short flag -w if specified with undefok
+    argv = ('./program', '-w', '--name=Bob', '--undefok=w', 'extra')
+    argv = self.flag_values(argv)
+    assert len(argv) == 2, "wrong number of arguments pulled"
+    assert argv[0]=='./program', "program name not preserved"
+    assert argv[1]=='extra', "extra argument not preserved"
+
+    # Allow unknown flag --nosuchflagwithparam=foo if specified
+    # with undefok
+    argv = ('./program', '--nosuchflagwithparam=foo', '--name=Bob',
+            '--undefok=nosuchflagwithparam', 'extra')
+    argv = self.flag_values(argv)
+    assert len(argv) == 2, "wrong number of arguments pulled"
+    assert argv[0]=='./program', "program name not preserved"
+    assert argv[1]=='extra', "extra argument not preserved"
+
+    # Even if undefok specifies multiple flags
+    argv = ('./program', '--nosuchflag', '-w', '--nosuchflagwithparam=foo',
+            '--name=Bob',
+            '--undefok=nosuchflag,w,nosuchflagwithparam',
+            'extra')
+    argv = self.flag_values(argv)
+    assert len(argv) == 2, "wrong number of arguments pulled"
+    assert argv[0]=='./program', "program name not preserved"
+    assert argv[1]=='extra', "extra argument not preserved"
+
+    # However, not if undefok doesn't specify the flag
+    try:
+      argv = ('./program', '--nosuchflag', '--name=Bob',
+              '--undefok=another_such', 'extra')
+      self.flag_values(argv)
+      raise AssertionError("Unknown flag exception not raised")
+    except flags.UnrecognizedFlag, e:
+      assert e.flagname == 'nosuchflag'
+
+    # Make sure --undefok doesn't mask other option errors.
+    try:
+      # Provide an option requiring a parameter but not giving it one.
+      argv = ('./program', '--undefok=name', '--name')
+      self.flag_values(argv)
+      raise AssertionError("Missing option parameter exception not raised")
+    except flags.UnrecognizedFlag:
+      raise AssertionError("Wrong kind of error exception raised")
+    except flags.FlagsError:
+      pass
+
+    # Test --undefok <list>
+    argv = ('./program', '--nosuchflag', '-w', '--nosuchflagwithparam=foo',
+            '--name=Bob',
+            '--undefok',
+            'nosuchflag,w,nosuchflagwithparam',
+            'extra')
+    argv = self.flag_values(argv)
+    assert len(argv) == 2, "wrong number of arguments pulled"
+    assert argv[0]=='./program', "program name not preserved"
+    assert argv[1]=='extra', "extra argument not preserved"
+
+
+class NonGlobalFlagsTest(unittest.TestCase):
+
+  def test_nonglobal_flags(self):
+    """Test use of non-global FlagValues"""
+    nonglobal_flags = flags.FlagValues()
+    flags.DEFINE_string("nonglobal_flag", "Bob", "flaghelp", nonglobal_flags)
+    argv = ('./program',
+            '--nonglobal_flag=Mary',
+            'extra')
+    argv = nonglobal_flags(argv)
+    assert len(argv) == 2, "wrong number of arguments pulled"
+    assert argv[0]=='./program', "program name not preserved"
+    assert argv[1]=='extra', "extra argument not preserved"
+    assert nonglobal_flags['nonglobal_flag'].value == 'Mary'
+
+  def test_unrecognized_nonglobal_flags(self):
+    """Test unrecognized non-global flags"""
+    nonglobal_flags = flags.FlagValues()
+    argv = ('./program',
+            '--nosuchflag')
+    try:
+      argv = nonglobal_flags(argv)
+      raise AssertionError("Unknown flag exception not raised")
+    except flags.UnrecognizedFlag, e:
+      assert e.flagname == 'nosuchflag'
+      pass
+
+    argv = ('./program',
+            '--nosuchflag',
+            '--undefok=nosuchflag')
+
+    argv = nonglobal_flags(argv)
+    assert len(argv) == 1, "wrong number of arguments pulled"
+    assert argv[0]=='./program', "program name not preserved"
 
   def test_create_flag_errors(self):
     # Since the exception classes are exposed, nothing stops users
@@ -1381,48 +1365,65 @@ class FlagsUnitTest(unittest.TestCase):
     e = flags.UnrecognizedFlag("message")
 
   def testFlagValuesDelAttr(self):
-    """Checks that del FLAGS.flag_id works."""
+    """Checks that del self.flag_values.flag_id works."""
     default_value = 'default value for testFlagValuesDelAttr'
     # 1. Declare and delete a flag with no short name.
-    flags.DEFINE_string('delattr_foo', default_value, 'A simple flag.')
-    self.assertEquals(FLAGS.delattr_foo, default_value)
-    flag_obj = FLAGS['delattr_foo']
+    flag_values = flags.FlagValues()
+    flags.DEFINE_string('delattr_foo', default_value, 'A simple flag.',
+                        flag_values=flag_values)
+    self.assertEquals(flag_values.delattr_foo, default_value)
+    flag_obj = flag_values['delattr_foo']
     # We also check that _FlagIsRegistered works as expected :)
-    self.assertTrue(FLAGS._FlagIsRegistered(flag_obj))
-    del FLAGS.delattr_foo
-    self.assertFalse('delattr_foo' in FLAGS.FlagDict())
-    self.assertFalse(FLAGS._FlagIsRegistered(flag_obj))
+    self.assertTrue(flag_values._FlagIsRegistered(flag_obj))
+    del flag_values.delattr_foo
+    self.assertFalse('delattr_foo' in flag_values.FlagDict())
+    self.assertFalse(flag_values._FlagIsRegistered(flag_obj))
     # If the previous del FLAGS.delattr_foo did not work properly, the
     # next definition will trigger a redefinition error.
-    flags.DEFINE_integer('delattr_foo', 3, 'A simple flag.')
-    del FLAGS.delattr_foo
+    flags.DEFINE_integer('delattr_foo', 3, 'A simple flag.',
+                         flag_values=flag_values)
+    del flag_values.delattr_foo
 
-    self.assertFalse('delattr_foo' in FLAGS.RegisteredFlags())
+    self.assertFalse('delattr_foo' in flag_values.RegisteredFlags())
 
     # 2. Declare and delete a flag with a short name.
     flags.DEFINE_string('delattr_bar', default_value, 'flag with short name',
-                        short_name='x5')
-    flag_obj = FLAGS['delattr_bar']
-    self.assertTrue(FLAGS._FlagIsRegistered(flag_obj))
-    del FLAGS.x5
-    self.assertTrue(FLAGS._FlagIsRegistered(flag_obj))
-    del FLAGS.delattr_bar
-    self.assertFalse(FLAGS._FlagIsRegistered(flag_obj))
+                        short_name='x5', flag_values=flag_values)
+    flag_obj = flag_values['delattr_bar']
+    self.assertTrue(flag_values._FlagIsRegistered(flag_obj))
+    del flag_values.x5
+    self.assertTrue(flag_values._FlagIsRegistered(flag_obj))
+    del flag_values.delattr_bar
+    self.assertFalse(flag_values._FlagIsRegistered(flag_obj))
 
-    # 3. Just like 2, but del FLAGS.name last
+    # 3. Just like 2, but del flag_values.name last
     flags.DEFINE_string('delattr_bar', default_value, 'flag with short name',
-                        short_name='x5')
-    flag_obj = FLAGS['delattr_bar']
-    self.assertTrue(FLAGS._FlagIsRegistered(flag_obj))
-    del FLAGS.delattr_bar
-    self.assertTrue(FLAGS._FlagIsRegistered(flag_obj))
-    del FLAGS.x5
-    self.assertFalse(FLAGS._FlagIsRegistered(flag_obj))
+                        short_name='x5', flag_values=flag_values)
+    flag_obj = flag_values['delattr_bar']
+    self.assertTrue(flag_values._FlagIsRegistered(flag_obj))
+    del flag_values.delattr_bar
+    self.assertTrue(flag_values._FlagIsRegistered(flag_obj))
+    del flag_values.x5
+    self.assertFalse(flag_values._FlagIsRegistered(flag_obj))
 
-    self.assertFalse('delattr_bar' in FLAGS.RegisteredFlags())
-    self.assertFalse('x5' in FLAGS.RegisteredFlags())
+    self.assertFalse('delattr_bar' in flag_values.RegisteredFlags())
+    self.assertFalse('x5' in flag_values.RegisteredFlags())
 
-  def _GetNamesOfDefinedFlags(self, module, flag_values=FLAGS):
+
+class KeyFlagsTest(unittest.TestCase):
+
+  def setUp(self):
+    self.flag_values = flags.FlagValues()
+
+  def assertListEqual(self, list1, list2):
+    """Asserts that, when sorted, list1 and list2 are identical."""
+    self.assertEqual(Sorted(list1), Sorted(list2))
+
+  def assertMultiLineEqual(self, s1, s2):
+    """Could do fancy diffing, but for now, just do a normal compare."""
+    self.assertEqual(s1, s2)
+
+  def _GetNamesOfDefinedFlags(self, module, flag_values):
     """Returns the list of names of flags defined by a module.
 
     Auxiliary for the testKeyFlags* methods.
@@ -1436,7 +1437,7 @@ class FlagsUnitTest(unittest.TestCase):
     """
     return [f.name for f in flag_values._GetFlagsDefinedByModule(module)]
 
-  def _GetNamesOfKeyFlags(self, module, flag_values=FLAGS):
+  def _GetNamesOfKeyFlags(self, module, flag_values):
     """Returns the list of names of key flags for a module.
 
     Auxiliary for the testKeyFlags* methods.
@@ -1462,74 +1463,80 @@ class FlagsUnitTest(unittest.TestCase):
   def testKeyFlags(self):
     # Before starting any testing, make sure no flags are already
     # defined for module_foo and module_bar.
-    self.assertListEqual(self._GetNamesOfKeyFlags(module_foo), [])
-    self.assertListEqual(self._GetNamesOfKeyFlags(module_bar), [])
-    self.assertListEqual(self._GetNamesOfDefinedFlags(module_foo), [])
-    self.assertListEqual(self._GetNamesOfDefinedFlags(module_bar), [])
+    self.assertListEqual(self._GetNamesOfKeyFlags(module_foo, self.flag_values),
+                         [])
+    self.assertListEqual(self._GetNamesOfKeyFlags(module_bar, self.flag_values),
+                         [])
+    self.assertListEqual(self._GetNamesOfDefinedFlags(module_foo,
+                                                      self.flag_values),
+                         [])
+    self.assertListEqual(self._GetNamesOfDefinedFlags(module_bar,
+                                                      self.flag_values),
+                         [])
+
+    # Defines a few flags in module_foo and module_bar.
+    module_foo.DefineFlags(flag_values=self.flag_values)
 
     try:
-      # Defines a few flags in module_foo and module_bar.
-      module_foo.DefineFlags()
-
       # Part 1. Check that all flags defined by module_foo are key for
       # that module, and similarly for module_bar.
       for module in [module_foo, module_bar]:
         self._AssertListsHaveSameElements(
-            FLAGS._GetFlagsDefinedByModule(module),
-            FLAGS._GetKeyFlagsForModule(module))
+            self.flag_values._GetFlagsDefinedByModule(module),
+            self.flag_values._GetKeyFlagsForModule(module))
         # Also check that each module defined the expected flags.
         self._AssertListsHaveSameElements(
-            self._GetNamesOfDefinedFlags(module),
+            self._GetNamesOfDefinedFlags(module, self.flag_values),
             module.NamesOfDefinedFlags())
 
       # Part 2. Check that flags.DECLARE_key_flag works fine.
       # Declare that some flags from module_bar are key for
       # module_foo.
-      module_foo.DeclareKeyFlags()
+      module_foo.DeclareKeyFlags(flag_values=self.flag_values)
 
       # Check that module_foo has the expected list of defined flags.
       self._AssertListsHaveSameElements(
-          self._GetNamesOfDefinedFlags(module_foo),
+          self._GetNamesOfDefinedFlags(module_foo, self.flag_values),
           module_foo.NamesOfDefinedFlags())
 
       # Check that module_foo has the expected list of key flags.
       self._AssertListsHaveSameElements(
-          self._GetNamesOfKeyFlags(module_foo),
+          self._GetNamesOfKeyFlags(module_foo, self.flag_values),
           module_foo.NamesOfDeclaredKeyFlags())
 
       # Part 3. Check that flags.ADOPT_module_key_flags works fine.
       # Trigger a call to flags.ADOPT_module_key_flags(module_bar)
       # inside module_foo.  This should declare a few more key
       # flags in module_foo.
-      module_foo.DeclareExtraKeyFlags()
+      module_foo.DeclareExtraKeyFlags(flag_values=self.flag_values)
 
       # Check that module_foo has the expected list of key flags.
       self._AssertListsHaveSameElements(
-          self._GetNamesOfKeyFlags(module_foo),
+          self._GetNamesOfKeyFlags(module_foo, self.flag_values),
           module_foo.NamesOfDeclaredKeyFlags() +
           module_foo.NamesOfDeclaredExtraKeyFlags())
     finally:
-      module_foo.RemoveFlags()
+      module_foo.RemoveFlags(flag_values=self.flag_values)
 
   def testKeyFlagsWithNonDefaultFlagValuesObject(self):
     # Check that key flags work even when we use a FlagValues object
-    # that is not the default flags.FLAGS object.  Otherwise, this
+    # that is not the default flags.self.flag_values object.  Otherwise, this
     # test is similar to testKeyFlags, but it uses only module_bar.
     # The other test module (module_foo) uses only the default values
     # for the flag_values keyword arguments.  This way, testKeyFlags
     # and this method test both the default FlagValues, the explicitly
     # specified one, and a mixed usage of the two.
 
-    # A brand-new FlagValues object, to use instead of flags.FLAGS.
+    # A brand-new FlagValues object, to use instead of flags.self.flag_values.
     fv = flags.FlagValues()
 
     # Before starting any testing, make sure no flags are already
     # defined for module_foo and module_bar.
     self.assertListEqual(
-        self._GetNamesOfKeyFlags(module_bar, flag_values=fv),
+        self._GetNamesOfKeyFlags(module_bar, fv),
         [])
     self.assertListEqual(
-        self._GetNamesOfDefinedFlags(module_bar, flag_values=fv),
+        self._GetNamesOfDefinedFlags(module_bar, fv),
         [])
 
     module_bar.DefineFlags(flag_values=fv)
@@ -1540,14 +1547,14 @@ class FlagsUnitTest(unittest.TestCase):
         fv._GetFlagsDefinedByModule(module_bar),
         fv._GetKeyFlagsForModule(module_bar))
     self._AssertListsHaveSameElements(
-        self._GetNamesOfDefinedFlags(module_bar, flag_values=fv),
+        self._GetNamesOfDefinedFlags(module_bar, fv),
         module_bar.NamesOfDefinedFlags())
 
     # Pick two flags from module_bar, declare them as key for the
     # current (i.e., main) module (via flags.DECLARE_key_flag), and
     # check that we get the expected effect.  The important thing is
     # that we always use flags_values=fv (instead of the default
-    # FLAGS).
+    # self.flag_values).
     main_module = flags._GetMainModule()
     names_of_flags_defined_by_bar = module_bar.NamesOfDefinedFlags()
     flag_name_0 = names_of_flags_defined_by_bar[0]
@@ -1555,97 +1562,98 @@ class FlagsUnitTest(unittest.TestCase):
 
     flags.DECLARE_key_flag(flag_name_0, flag_values=fv)
     self._AssertListsHaveSameElements(
-        self._GetNamesOfKeyFlags(main_module, flag_values=fv),
+        self._GetNamesOfKeyFlags(main_module, fv),
         [flag_name_0])
 
     flags.DECLARE_key_flag(flag_name_2, flag_values=fv)
     self._AssertListsHaveSameElements(
-        self._GetNamesOfKeyFlags(main_module, flag_values=fv),
+        self._GetNamesOfKeyFlags(main_module, fv),
         [flag_name_0, flag_name_2])
 
     # Try with a special (not user-defined) flag too:
     flags.DECLARE_key_flag('undefok', flag_values=fv)
     self._AssertListsHaveSameElements(
-        self._GetNamesOfKeyFlags(main_module, flag_values=fv),
+        self._GetNamesOfKeyFlags(main_module, fv),
         [flag_name_0, flag_name_2, 'undefok'])
 
-    flags.ADOPT_module_key_flags(module_bar, flag_values=fv)
+    flags.ADOPT_module_key_flags(module_bar, fv)
     self._AssertListsHaveSameElements(
-        self._GetNamesOfKeyFlags(main_module, flag_values=fv),
+        self._GetNamesOfKeyFlags(main_module, fv),
         names_of_flags_defined_by_bar + ['undefok'])
 
     # Adopt key flags from the module google3.pyglib.flags itself.
     flags.ADOPT_module_key_flags(flags, flag_values=fv)
     self._AssertListsHaveSameElements(
-        self._GetNamesOfKeyFlags(main_module, flag_values=fv),
+        self._GetNamesOfKeyFlags(main_module, fv),
         names_of_flags_defined_by_bar + ['flagfile', 'undefok'])
 
   def testMainModuleHelpWithKeyFlags(self):
     # Similar to test_main_module_help, but this time we make sure to
     # declare some key flags.
+
+    # Safety check that the main module does not declare any flags
+    # at the beginning of this test.
+    expected_help = ''
+    self.assertMultiLineEqual(expected_help, self.flag_values.MainModuleHelp())
+
+    # Define one flag in this main module and some flags in modules
+    # a and b.  Also declare one flag from module a and one flag
+    # from module b as key flags for the main module.
+    flags.DEFINE_integer('main_module_int_fg', 1,
+                         'Integer flag in the main module.',
+                         flag_values=self.flag_values)
+
     try:
-      help_flag_help = (
-          "  -?,--[no]help: show this help\n"
-          "  --[no]helpshort: show usage only for this module\n"
-          "  --[no]helpxml: like --help, but generates XML output"
-          )
-
-      expected_help = "\n%s:\n%s" % (sys.argv[0], help_flag_help)
-
-      # Safety check that the main module does not declare any flags
-      # at the beginning of this test.
-      self.assertMultiLineEqual(expected_help, FLAGS.MainModuleHelp())
-
-      # Define one flag in this main module and some flags in modules
-      # a and b.  Also declare one flag from module a and one flag
-      # from module b as key flags for the main module.
-      flags.DEFINE_integer('main_module_int_fg', 1,
-                           'Integer flag in the main module.')
-
       main_module_int_fg_help = (
           "  --main_module_int_fg: Integer flag in the main module.\n"
           "    (default: '1')\n"
           "    (an integer)")
 
+      expected_help += "\n%s:" % (sys.argv[0])
+
       expected_help += "\n" + main_module_int_fg_help
-      self.assertMultiLineEqual(expected_help, FLAGS.MainModuleHelp())
+      self.assertMultiLineEqual(expected_help,
+                                self.flag_values.MainModuleHelp())
 
       # The following call should be a no-op: any flag declared by a
       # module is automatically key for that module.
-      flags.DECLARE_key_flag('main_module_int_fg')
-      self.assertMultiLineEqual(expected_help, FLAGS.MainModuleHelp())
+      flags.DECLARE_key_flag('main_module_int_fg', flag_values=self.flag_values)
+      self.assertMultiLineEqual(expected_help,
+                                self.flag_values.MainModuleHelp())
 
       # The definition of a few flags in an imported module should not
       # change the main module help.
-      module_foo.DefineFlags()
-      self.assertMultiLineEqual(expected_help, FLAGS.MainModuleHelp())
+      module_foo.DefineFlags(flag_values=self.flag_values)
+      self.assertMultiLineEqual(expected_help,
+                                self.flag_values.MainModuleHelp())
 
-      flags.DECLARE_key_flag('tmod_foo_bool')
+      flags.DECLARE_key_flag('tmod_foo_bool', flag_values=self.flag_values)
       tmod_foo_bool_help = (
           "  --[no]tmod_foo_bool: Boolean flag from module foo.\n"
           "    (default: 'true')")
       expected_help += "\n" + tmod_foo_bool_help
-      self.assertMultiLineEqual(expected_help, FLAGS.MainModuleHelp())
+      self.assertMultiLineEqual(expected_help,
+                                self.flag_values.MainModuleHelp())
 
-      flags.DECLARE_key_flag('tmod_bar_z')
+      flags.DECLARE_key_flag('tmod_bar_z', flag_values=self.flag_values)
       tmod_bar_z_help = (
           "  --[no]tmod_bar_z: Another boolean flag from module bar.\n"
           "    (default: 'false')")
       # Unfortunately, there is some flag sorting inside
       # MainModuleHelp, so we can't keep incrementally extending
       # the expected_help string ...
-      expected_help = ("\n%s:\n%s\n%s\n%s\n%s" %
+      expected_help = ("\n%s:\n%s\n%s\n%s" %
                        (sys.argv[0],
-                        help_flag_help,
                         main_module_int_fg_help,
                         tmod_bar_z_help,
                         tmod_foo_bool_help))
-      self.assertMultiLineEqual(FLAGS.MainModuleHelp(), expected_help)
+      self.assertMultiLineEqual(self.flag_values.MainModuleHelp(),
+                                expected_help)
 
     finally:
       # At the end, delete all the flag information we created.
-      FLAGS.__delattr__('main_module_int_fg')
-      module_foo.RemoveFlags()
+      self.flag_values.__delattr__('main_module_int_fg')
+      module_foo.RemoveFlags(flag_values=self.flag_values)
 
   def test_ADOPT_module_key_flags(self):
     # Check that ADOPT_module_key_flags raises an exception when
@@ -1653,6 +1661,10 @@ class FlagsUnitTest(unittest.TestCase):
     self.assertRaises(flags.FlagsError,
                       flags.ADOPT_module_key_flags,
                       'google3.pyglib.app')
+
+
+class GetCallingModuleTest(unittest.TestCase):
+  """Test whether we correctly determine the module which defines the flag."""
 
   def test_GetCallingModule(self):
     self.assertEqual(flags._GetCallingModule(), sys.argv[0])
@@ -1731,8 +1743,8 @@ class FlagsErrorMessagesTest(unittest.TestCase):
 
   def setUp(self):
     # make sure we are using the old, stupid way of parsing flags.
-    FLAGS.UseGnuGetOpt(False)
     self.flag_values = flags.FlagValues()
+    self.flag_values.UseGnuGetOpt(False)
 
   def testIntegerErrorText(self):
     # Make sure we get proper error text
