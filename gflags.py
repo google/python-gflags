@@ -128,6 +128,47 @@ SPECIAL FLAGS: There are a few flags that have special meaning:
    --              as in getopt(), terminates flag-processing
 
 
+FLAGS VALIDATORS: If your program:
+  - requires flag X to be specified
+  - needs flag Y to match a regular expression
+  - or requires any more general constraint to be satisfied
+then validators are for you!
+
+Each validator represents a constraint over one flag, which is enforced
+starting from the initial parsing of the flags and until the program
+terminates.
+
+Also, lower_bound and upper_bound for numerical flags are enforced using flag
+validators.
+
+Howto:
+If you want to enforce a constraint over one flag, use
+
+flags.RegisterValidator(flag_name,
+                        checker,
+                        message='Flag validation failed',
+                        flag_values=FLAGS)
+
+After flag values are initially parsed, and after any change to the specified
+flag, method checker(flag_value) will be executed. If constraint is not
+satisfied, an IllegalFlagValue exception will be raised. See
+RegisterValidator's docstring for a detailed explanation on how to construct
+your own checker.
+
+
+EXAMPLE USAGE:
+
+FLAGS = flags.FLAGS
+
+flags.DEFINE_integer('my_version', 0, 'Version number.')
+flags.DEFINE_string('filename', None, 'Input file name')
+
+flags.RegisterValidator('my_version',
+                        lambda value: value % 2 == 0,
+                        message='--my_version must be divisible by 2')
+flags.MarkFlagAsRequired('filename')
+
+
 NOTE ON --flagfile:
 
 Flags may be loaded from text files in addition to being specified on
@@ -352,15 +393,17 @@ import re
 import string
 import sys
 
-# Are we running at least python 2.2?                                           
+import gflags_validators
+
+# Are we running at least python 2.2?
 try:
   if tuple(sys.version_info[:3]) < (2,2,0):
     raise NotImplementedError("requires python 2.2.0 or later")
-except AttributeError:   # a very old python, that lacks sys.version_info       
+except AttributeError:   # a very old python, that lacks sys.version_info
   raise NotImplementedError("requires python 2.2.0 or later")
 
-# If we're not running at least python 2.2.1, define True, False, and bool.     
-# Thanks, Guido, for the code.                                                  
+# If we're not running at least python 2.2.1, define True, False, and bool.
+# Thanks, Guido, for the code.
 try:
   True, False, bool
 except NameError:
@@ -447,15 +490,19 @@ class UnrecognizedFlag(FlagsError):
   pass
 
 
-# An UnrecognizedFlagError conveys more information than an
-# UnrecognizedFlag. Since there are external modules that create
-# DuplicateFlags, the interface to DuplicateFlag shouldn't change.
+# An UnrecognizedFlagError conveys more information than an UnrecognizedFlag.
+# Since there are external modules that create DuplicateFlags, the interface to
+# DuplicateFlag shouldn't change.  The flagvalue will be assigned the full value
+# of the flag and its argument, if any, allowing handling of unrecognzed flags
+# in an exception handler.
+# If flagvalue is the empty string, then this exception is an due to a
+# reference to a flag that was not already defined.
 class UnrecognizedFlagError(UnrecognizedFlag):
-  def __init__(self, flagname):
+  def __init__(self, flagname, flagvalue=''):
     self.flagname = flagname
+    self.flagvalue = flagvalue
     UnrecognizedFlag.__init__(
         self, "Unknown command line flag '%s'" % flagname)
-
 
 # Global variable used by expvar
 _exported_flags = {}
@@ -892,7 +939,34 @@ class FlagValues:
     """Sets the 'value' attribute of the flag --name."""
     fl = self.FlagDict()
     fl[name].value = value
+    self._AssertValidators(fl[name].validators)
     return value
+
+  def _AssertAllValidators(self):
+    all_validators = set()
+    for flag in self.FlagDict().itervalues():
+      for validator in flag.validators:
+        all_validators.add(validator)
+    self._AssertValidators(all_validators)
+
+  def _AssertValidators(self, validators):
+    """Assert if all validators in the list are satisfied.
+
+    Asserts validators in the order they were created.
+    Args:
+      validators: Iterable(gflags_validators.Validator), validators to be
+        verified
+    Raises:
+      AttributeError: if validators work with a non-existing flag.
+      IllegalFlagValue: if validation fails for at least one validator
+    """
+    for validator in sorted(
+        validators, key=lambda validator: validator.insertion_index):
+      try:
+        validator.Verify(self)
+      except gflags_validators.Error, e:
+        message = validator.PrintFlagsWithValues(self)
+        raise IllegalFlagValue('%s: %s' % (message, str(e)))
 
   def _FlagIsRegistered(self, flag_obj):
     """Checks whether a Flag object is registered under some name.
@@ -976,6 +1050,7 @@ class FlagValues:
     if not fl.has_key(name):
       raise AttributeError(name)
     fl[name].SetDefault(value)
+    self._AssertValidators(fl[name].validators)
 
   def __contains__(self, name):
     """Returns True if name is a value (flag) in the dict."""
@@ -1071,13 +1146,12 @@ class FlagValues:
         if not e.opt or e.opt in fl:
           # Not an unrecognized option, reraise the exception as a FlagsError
           raise FlagsError(e)
-        # Handle an unrecognized option.
-        unrecognized_opts.append(e.opt)
         # Remove offender from args and try again
         for arg_index in range(len(args)):
           if ((args[arg_index] == '--' + e.opt) or
               (args[arg_index] == '-' + e.opt) or
-              args[arg_index].startswith('--' + e.opt + '=')):
+              (args[arg_index].startswith('--' + e.opt + '='))):
+            unrecognized_opts.append((e.opt, args[arg_index]))
             args = args[0:arg_index] + args[arg_index+1:]
             break
         else:
@@ -1115,21 +1189,24 @@ class FlagValues:
 
     # If there were unrecognized options, raise an exception unless
     # the options were named via --undefok.
-    for opt in unrecognized_opts:
+    for opt, value in unrecognized_opts:
       if opt not in undefok_flags:
-        raise UnrecognizedFlagError(opt)
+        raise UnrecognizedFlagError(opt, value)
 
     if unparsed_args:
       if self.__dict__['__use_gnu_getopt']:
         # if using gnu_getopt just return the program name + remainder of argv.
-        return argv[:1] + unparsed_args
+        ret_val = argv[:1] + unparsed_args
       else:
         # unparsed_args becomes the first non-flag detected by getopt to
         # the end of argv.  Because argv may have been modified above,
         # return original_argv for this region.
-        return argv[:1] + original_argv[-len(unparsed_args):]
+        ret_val = argv[:1] + original_argv[-len(unparsed_args):]
     else:
-      return argv[:1]
+      ret_val = argv[:1]
+
+    self._AssertAllValidators()
+    return ret_val
 
   def Reset(self):
     """Resets the values to the point before FLAGS(argv) was called."""
@@ -1543,6 +1620,19 @@ class FlagValues:
 
     outfile.write('</AllFlags>\n')
     outfile.flush()
+
+  def AddValidator(self, validator):
+    """Register new flags validator to be checked.
+
+    Args:
+      validator: gflags_validators.Validator
+    Raises:
+      AttributeError: if validators work with a non-existing flag.
+    """
+    for flag_name in validator.GetFlagsNames():
+      flag = self.FlagDict()[flag_name]
+      flag.validators.append(validator)
+
 # end of FlagValues definition
 
 
@@ -1629,6 +1719,7 @@ class Flag:
     self.serializer = serializer
     self.allow_override = allow_override
     self.value = None
+    self.validators = []
 
     self.SetDefault(default)
 
@@ -1678,6 +1769,12 @@ class Flag:
     # cowardly bail out until someone fixes the semantics of trying to
     # pass None to a C++ flag.  See swig_flags.Init() for details on
     # this behavior.
+    # TODO(olexiy): Users can directly call this method, bypassing all flags
+    # validators (we don't have FlagValues here, so we can not check
+    # validators).
+    # The simplest solution I see is to make this method private.
+    # Another approach would be to store reference to the corresponding
+    # FlagValues with each flag, but this seems to be an overkill.
     if value is None and self.allow_override:
       raise DuplicateFlagCannotPropagateNoneToSwig(self.name)
 
@@ -1748,7 +1845,47 @@ class Flag:
 # End of Flag definition
 
 
-class ArgumentParser:
+class _ArgumentParserCache(type):
+  """Metaclass used to cache and share argument parsers among flags."""
+
+  _instances = {}
+
+  def __call__(mcs, *args, **kwargs):
+    """Returns an instance of the argument parser cls.
+
+    This method overrides behavior of the __new__ methods in
+    all subclasses of ArgumentParser (inclusive). If an instance
+    for mcs with the same set of arguments exists, this instance is
+    returned, otherwise a new instance is created.
+
+    If any keyword arguments are defined, or the values in args
+    are not hashable, this method always returns a new instance of
+    cls.
+
+    Args:
+      args: Positional initializer arguments.
+      kwargs: Initializer keyword arguments.
+
+    Returns:
+      An instance of cls, shared or new.
+    """
+    if kwargs:
+      return type.__call__(mcs, *args, **kwargs)
+    else:
+      instances = mcs._instances
+      key = (mcs,) + tuple(args)
+      try:
+        return instances[key]
+      except KeyError:
+        # No cache entry for key exists, create a new one.
+        return instances.setdefault(key, type.__call__(mcs, *args))
+      except TypeError:
+        # An object in args cannot be hashed, always return
+        # a new instance.
+        return type.__call__(mcs, *args)
+
+
+class ArgumentParser(object):
   """Base class used to parse and convert arguments.
 
   The Parse() method checks to make sure that the string argument is a
@@ -1758,7 +1895,13 @@ class ArgumentParser:
 
   Subclasses should also define a syntactic_help string which may be
   presented to the user to describe the form of the legal values.
+
+  Argument parser classes must be stateless, since instances are cached
+  and shared between flags. Initializer arguments are allowed, but all
+  member variables must be derived from initializer arguments only.
   """
+  __metaclass__ = _ArgumentParserCache
+
   syntactic_help = ""
 
   def Parse(self, argument):
@@ -1786,6 +1929,78 @@ class ListSerializer(ArgumentSerializer):
 
   def Serialize(self, value):
     return self.list_sep.join([str(x) for x in value])
+
+
+# Flags validators
+
+
+def RegisterValidator(flag_name,
+                      checker,
+                      message='Flag validation failed',
+                      flag_values=FLAGS):
+  """Adds a constraint, which will be enforced during program execution.
+
+  The constraint is validated when flags are initially parsed, and after each
+  change of the corresponding flag's value.
+  Args:
+    flag_name: string, name of the flag to be checked.
+    checker: method to validate the flag.
+      input  - value of the corresponding flag (string, boolean, etc.
+        This value will be passed to checker by the library). See file's
+        docstring for examples.
+      output - Boolean.
+        Must return True if validator constraint is satisfied.
+        If constraint is not satisfied, it should either return False or
+          raise gflags_validators.Error(desired_error_message).
+    message: error text to be shown to the user if checker returns False.
+      If checker raises gflags_validators.Error, message from the raised
+        Error will be shown.
+    flag_values: FlagValues
+  Raises:
+    AttributeError: if flag_name is not registered as a valid flag name.
+  """
+  flag_values.AddValidator(gflags_validators.SimpleValidator(flag_name,
+                                                             checker,
+                                                             message))
+
+
+def MarkFlagAsRequired(flag_name, flag_values=FLAGS):
+  """Ensure that flag is not None during program execution.
+
+  Registers a flag validator, which will follow usual validator
+  rules.
+  Args:
+    flag_name: string, name of the flag
+    flag_values: FlagValues
+  Raises:
+    AttributeError: if flag_name is not registered as a valid flag name.
+  """
+  RegisterValidator(flag_name,
+                    lambda value: value is not None,
+                    message='Flag --%s must be specified.' % flag_name,
+                    flag_values=flag_values)
+
+
+def _RegisterBoundsValidatorIfNeeded(parser, name, flag_values):
+  """Enforce lower and upper bounds for numeric flags.
+
+  Args:
+    parser: NumericParser (either FloatParser or IntegerParser). Provides lower
+      and upper bounds, and help text to display.
+    name: string, name of the flag
+    flag_values: FlagValues
+  """
+  if parser.lower_bound is not None or parser.upper_bound is not None:
+
+    def Checker(value):
+      if value is not None and parser.IsOutsideBounds(value):
+        message = '%s is not %s' % (value, parser.syntactic_help)
+        raise gflags_validators.Error(message)
+      return True
+
+    RegisterValidator(name,
+                      Checker,
+                      flag_values=flag_values)
 
 
 # The DEFINE functions are explained in mode details in the module doc string.
@@ -2085,10 +2300,13 @@ class NumericParser(ArgumentParser):
   Parsed value may be bounded to a given upper and lower bound.
   """
 
+  def IsOutsideBounds(self, val):
+    return ((self.lower_bound is not None and val < self.lower_bound) or
+            (self.upper_bound is not None and val > self.upper_bound))
+
   def Parse(self, argument):
     val = self.Convert(argument)
-    if ((self.lower_bound is not None and val < self.lower_bound) or
-        (self.upper_bound is not None and val > self.upper_bound)):
+    if self.IsOutsideBounds(val):
       raise ValueError("%s is not %s" % (val, self.syntactic_help))
     return val
 
@@ -2102,7 +2320,7 @@ class NumericParser(ArgumentParser):
     """Default implementation: always returns its argument unmodified."""
     return argument
 
-# End of Numeric Parser 
+# End of Numeric Parser
 
 #
 # FLOAT FLAGS
@@ -2118,6 +2336,7 @@ class FloatParser(NumericParser):
   syntactic_help = " ".join((number_article, number_name))
 
   def __init__(self, lower_bound=None, upper_bound=None):
+    super(FloatParser, self).__init__()
     self.lower_bound = lower_bound
     self.upper_bound = upper_bound
     sh = self.syntactic_help
@@ -2152,7 +2371,7 @@ def DEFINE_float(name, default, help, lower_bound=None, upper_bound=None,
   parser = FloatParser(lower_bound, upper_bound)
   serializer = ArgumentSerializer()
   DEFINE(parser, name, default, help, flag_values, serializer, **args)
-
+  _RegisterBoundsValidatorIfNeeded(parser, name, flag_values=flag_values)
 
 #
 # INTEGER FLAGS
@@ -2169,6 +2388,7 @@ class IntegerParser(NumericParser):
   syntactic_help = " ".join((number_article, number_name))
 
   def __init__(self, lower_bound=None, upper_bound=None):
+    super(IntegerParser, self).__init__()
     self.lower_bound = lower_bound
     self.upper_bound = upper_bound
     sh = self.syntactic_help
@@ -2220,6 +2440,7 @@ def DEFINE_integer(name, default, help, lower_bound=None, upper_bound=None,
   parser = IntegerParser(lower_bound, upper_bound)
   serializer = ArgumentSerializer()
   DEFINE(parser, name, default, help, flag_values, serializer, **args)
+  _RegisterBoundsValidatorIfNeeded(parser, name, flag_values=flag_values)
 
 
 #
@@ -2234,6 +2455,7 @@ class EnumParser(ArgumentParser):
   """
 
   def __init__(self, enum_values=None):
+    super(EnumParser, self).__init__()
     self.enum_values = enum_values
 
   def Parse(self, argument):
@@ -2288,6 +2510,7 @@ class BaseListParser(ArgumentParser):
 
   def __init__(self, token=None, name=None):
     assert name
+    super(BaseListParser, self).__init__()
     self._token = token
     self._name = name
     self.syntactic_help = "a %s separated list" % self._name
