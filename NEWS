@@ -1,4 +1,4 @@
-== DDD ==
+== 24 January 2011 ==
 
 I've just released python-gflags 1.5.  This release adds support for
 flag verifiers: small functions you can associate with flags, that are
