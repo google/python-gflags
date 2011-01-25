@@ -1,4 +1,13 @@
-==11 October 2010==
+== DDD ==
+
+I've just released python-gflags 1.5.  This release adds support for
+flag verifiers: small functions you can associate with flags, that are
+called whenever the flag value is set or modified, and can verify that
+the new value is legal.  It also has other, minor changes, described
+in the
+[http://python-gflags.googlecode.com/svn/tags/python-gflags-1.5/ChangeLog ChangeLog].
+
+=== 11 October 2010 ===
 
 I've just released python-gflags 1.4.  This release has only minor
 changes from 1.3, including support for printing flags of a specific
@@ -7,7 +16,7 @@ error messaging, and
 [http://python-gflags.googlecode.com/svn/tags/python-gflags-1.4/ChangeLog so forth].
 If 1.3 is working well for you, there's no particular reason to upgrade.
 
-===4 January 2010===
+=== 4 January 2010 ===
 
 I just released python-gflags 1.3. This is the first python-gflags
 release; it is version 1.3 because this code is forked from the 1.3

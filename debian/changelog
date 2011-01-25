@@ -1,3 +1,9 @@
+python-gflags (1.5-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Google Inc. <opensource@google.com>  Mon, 24 Jan 2011 16:58:10 -0800
+
 python-gflags (1.4-1) unstable; urgency=low
 
   * New upstream release.
