@@ -1,4 +1,10 @@
-== 24 January 2011 ==
+== 26 January 2011 ==
+
+I've just released python-gflags 1.5.1.  I had improperly packaged
+python-gflags 1.5, so it probably doesn't work.  All users who have
+updated to python-gflags 1.5 are encouraged to update again to 1.5.1.
+
+=== 24 January 2011 ===
 
 I've just released python-gflags 1.5.  This release adds support for
 flag verifiers: small functions you can associate with flags, that are

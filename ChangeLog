@@ -1,3 +1,8 @@
+Wed Jan 26 13:50:46 2011  Google Inc. <opensource@google.com>
+
+	* python-gflags: version 1.5.1
+	* Fix manifest and setup.py to include new files
+
 Mon Jan 24 16:58:10 2011  Google Inc. <opensource@google.com>
 
 	* python-gflags: version 1.5

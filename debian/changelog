@@ -1,3 +1,9 @@
+python-gflags (1.5.1-1) unstable; urgency=low
+
+  * New upstream release (fixes manifest and setup.py files)
+
+ -- Google Inc. <opensource@google.com>  Wed, 26 Jan 2011 13:50:46 -0800
+
 python-gflags (1.5-1) unstable; urgency=low
 
   * New upstream release.
