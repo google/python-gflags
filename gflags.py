@@ -161,7 +161,7 @@ EXAMPLE USAGE:
 FLAGS = flags.FLAGS
 
 flags.DEFINE_integer('my_version', 0, 'Version number.')
-flags.DEFINE_string('filename', None, 'Input file name')
+flags.DEFINE_string('filename', None, 'Input file name', short_name='f')
 
 flags.RegisterValidator('my_version',
                         lambda value: value % 2 == 0,
