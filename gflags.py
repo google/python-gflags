@@ -450,6 +450,10 @@ class DuplicateFlag(FlagsError):
   """Raised if there is a flag naming conflict."""
   pass
 
+class CantOpenFlagFileError(FlagsError):
+  """Raised if flagfile fails to open: doesn't exist, wrong permissions, etc."""
+  pass
+
 
 class DuplicateFlagCannotPropagateNoneToSwig(DuplicateFlag):
   """Special case of DuplicateFlag -- SWIG flag value can't be set to None.
@@ -722,13 +726,26 @@ def _GetModuleObjectAndName(globals_dict):
 
 
 def _GetMainModule():
-  """Returns the name of the module from which execution started."""
-  for depth in range(1, sys.getrecursionlimit()):
-    try:
-      globals_of_main = sys._getframe(depth).f_globals
-    except ValueError:
-      return _GetModuleObjectAndName(globals_of_main)[1]
-  raise AssertionError("No module was found")
+  """Returns: string, name of the module from which execution started."""
+  # First, try to use the same logic used by _GetCallingModule(),
+  # i.e., call _GetModuleObjectAndName().  For that we first need to
+  # find the dictionary that the main module uses to store the
+  # globals.
+  #
+  # That's (normally) the same dictionary object that the deepest
+  # (oldest) stack frame is using for globals.
+  deepest_frame = sys._getframe(0)
+  while deepest_frame.f_back is not None:
+    deepest_frame = deepest_frame.f_back
+  globals_for_main_module = deepest_frame.f_globals
+  main_module_name = _GetModuleObjectAndName(globals_for_main_module)[1]
+  # The above strategy fails in some cases (e.g., tools that compute
+  # code coverage by redefining, among other things, the main module).
+  # If so, just use sys.argv[0].  We can probably always do this, but
+  # it's safest to try to use the same logic as _GetCallingModule().
+  if main_module_name is None:
+    main_module_name = sys.argv[0]
+  return main_module_name
 
 
 class FlagValues:
@@ -1447,9 +1464,7 @@ class FlagValues:
     try:
       file_obj = open(filename, 'r')
     except IOError, e_msg:
-      print e_msg
-      print 'ERROR:: Unable to open flagfile: %s' % (filename)
-      return flag_line_list
+      raise CantOpenFlagFileError('ERROR:: Unable to open flagfile: %s' % e_msg)
 
     line_list = file_obj.readlines()
     file_obj.close()
@@ -1532,7 +1547,8 @@ class FlagValues:
         else:
           # This handles the case of (-)-flagfile=foo.
           flag_filename = self.ExtractFilename(current_arg)
-        new_argv[0:0] = self.__GetFlagFileLines(flag_filename, parsed_file_list)
+        new_argv.extend(
+            self.__GetFlagFileLines(flag_filename, parsed_file_list))
       else:
         new_argv.append(current_arg)
         # Stop parsing after '--', like getopt and gnu_getopt.

@@ -832,6 +832,7 @@ class LoadFromFlagFileTest(unittest.TestCase):
       tmp_flag_file_1 = open((tmp_path + '/UnitTestFile1.tst'), 'w')
       tmp_flag_file_2 = open((tmp_path + '/UnitTestFile2.tst'), 'w')
       tmp_flag_file_3 = open((tmp_path + '/UnitTestFile3.tst'), 'w')
+      tmp_flag_file_4 = open((tmp_path + '/UnitTestFile4.tst'), 'w')
     except IOError, e_msg:
       print e_msg
       print 'FAIL\n File Creation problem in Unit Test'
@@ -857,10 +858,17 @@ class LoadFromFlagFileTest(unittest.TestCase):
     tmp_flag_file_3.write('#YAFC\n')
     tmp_flag_file_3.write('--UnitTestBoolFlag\n')
     file_list.append(tmp_flag_file_3.name)
+    # this file is unreadable
+    tmp_flag_file_4.write('--flagfile=%s\n' % tmp_flag_file_3.name)
+    tmp_flag_file_4.write('--UnitTestMessage1=setFromTempFile3\n')
+    tmp_flag_file_4.write('--UnitTestMessage1=setFromTempFile3\n')
+    os.fchmod(tmp_flag_file_4.fileno(), 0)
+    file_list.append(tmp_flag_file_4.name)
 
     tmp_flag_file_1.close()
     tmp_flag_file_2.close()
     tmp_flag_file_3.close()
+    tmp_flag_file_4.close()
 
     self.files_to_delete = file_list
 
@@ -899,13 +907,13 @@ class LoadFromFlagFileTest(unittest.TestCase):
     fake_argv = fake_cmd_line.split(' ')
 
     # We should see the original cmd line with the file's contents spliced in.
-    # Note that these will be in REVERSE order from order encountered in file
-    # This is done so arguements we encounter sooner will have priority.
+    # Flags from the file will appear in the order order they are sepcified
+    # in the file, in the same position as the flagfile argument.
     expected_results = ['fooScript',
+                          '--q',
                           '--UnitTestMessage1=tempFile1!',
                           '--UnitTestNumber=54321',
-                          '--noUnitTestBoolFlag',
-                          '--q']
+                          '--noUnitTestBoolFlag']
     test_results = self._ReadFlagsFromFiles(fake_argv, False)
     self.assertEqual(expected_results, test_results)
   # end testTwo def
@@ -919,12 +927,12 @@ class LoadFromFlagFileTest(unittest.TestCase):
     fake_argv = fake_cmd_line.split(' ')
 
     expected_results = ['fooScript',
+                          '--UnitTestNumber=77',
                           '--UnitTestMessage1=tempFile1!',
                           '--UnitTestNumber=54321',
                           '--noUnitTestBoolFlag',
                           '--UnitTestMessage2=setFromTempFile2',
-                          '--UnitTestNumber=6789a',
-                          '--UnitTestNumber=77']
+                          '--UnitTestNumber=6789a']
     test_results = self._ReadFlagsFromFiles(fake_argv, False)
     self.assertEqual(expected_results, test_results)
   # end testThree def
@@ -984,11 +992,11 @@ class LoadFromFlagFileTest(unittest.TestCase):
                      % tmp_files[0])
     fake_argv = fake_cmd_line.split(' ')
     expected_results = ['fooScript',
+                        '--SomeFlag',
+                        'some_arg',
                         '--UnitTestMessage1=tempFile1!',
                         '--UnitTestNumber=54321',
-                        '--noUnitTestBoolFlag',
-                        '--SomeFlag',
-                        'some_arg']
+                        '--noUnitTestBoolFlag']
 
     test_results = self._ReadFlagsFromFiles(fake_argv, False)
     self.assertEqual(expected_results, test_results)
@@ -1001,14 +1009,34 @@ class LoadFromFlagFileTest(unittest.TestCase):
                      % tmp_files[0])
     fake_argv = fake_cmd_line.split(' ')
     expected_results = ['fooScript',
+                        '--SomeFlag',
+                        'some_arg',
                         '--UnitTestMessage1=tempFile1!',
                         '--UnitTestNumber=54321',
-                        '--noUnitTestBoolFlag',
-                        '--SomeFlag',
-                        'some_arg']
+                        '--noUnitTestBoolFlag']
 
     test_results = self._ReadFlagsFromFiles(fake_argv, True)
     self.assertEqual(expected_results, test_results)
+
+  def testMethod_flagfiles_NoPermissions(self):
+    """Test that --flagfile raises except on file that is unreadable."""
+    tmp_files = self._SetupTestFiles()
+    # specify our temp file on the fake cmd line
+    fake_cmd_line = ('fooScript --SomeFlag some_arg --flagfile=%s'
+                     % tmp_files[3])
+    fake_argv = fake_cmd_line.split(' ')
+    self.assertRaises(flags.CantOpenFlagFileError,
+                      self._ReadFlagsFromFiles, fake_argv, True)
+
+  def testMethod_flagfiles_NotFound(self):
+    """Test that --flagfile raises except on file that does not exist."""
+    tmp_files = self._SetupTestFiles()
+    # specify our temp file on the fake cmd line
+    fake_cmd_line = ('fooScript --SomeFlag some_arg --flagfile=%sNOTEXIST'
+                     % tmp_files[3])
+    fake_argv = fake_cmd_line.split(' ')
+    self.assertRaises(flags.CantOpenFlagFileError,
+                      self._ReadFlagsFromFiles, fake_argv, True)
 
   def test_flagfiles_user_path_expansion(self):
     """Test that user directory referenced paths (ie. ~/foo) are correctly
