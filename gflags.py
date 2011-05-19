@@ -466,22 +466,39 @@ class DuplicateFlagCannotPropagateNoneToSwig(DuplicateFlag):
   pass
 
 
-# A DuplicateFlagError conveys more information than a
-# DuplicateFlag. Since there are external modules that create
-# DuplicateFlags, the interface to DuplicateFlag shouldn't change.
 class DuplicateFlagError(DuplicateFlag):
+  """A DuplicateFlag whose message cites the conflicting definitions.
 
-  def __init__(self, flagname, flag_values):
+  A DuplicateFlagError conveys more information than a DuplicateFlag,
+  namely the modules where the conflicting definitions occur. This
+  class was created to avoid breaking external modules which depend on
+  the existing DuplicateFlags interface.
+  """
+
+  def __init__(self, flagname, flag_values, other_flag_values=None):
+    """Create a DuplicateFlagError.
+
+    Args:
+      flagname: Name of the flag being redefined.
+      flag_values: FlagValues object containing the first definition of
+          flagname.
+      other_flag_values: If this argument is not None, it should be the
+          FlagValues object where the second definition of flagname occurs.
+          If it is None, we assume that we're being called when attempting
+          to create the flag a second time, and we use the module calling
+          this one as the source of the second definition.
+    """
     self.flagname = flagname
-    message = "The flag '%s' is defined twice." % self.flagname
-    flags_by_module = flag_values.FlagsByModuleDict()
-    for module in flags_by_module:
-      for flag in flags_by_module[module]:
-        if flag.name == flagname or flag.short_name == flagname:
-          message = message + " First from " + module + ","
-          break
-    message = message + " Second from " + _GetCallingModule()
-    DuplicateFlag.__init__(self, message)
+    first_module = flag_values.FindModuleDefiningFlag(
+        flagname, default='<unknown>')
+    if other_flag_values is None:
+      second_module = _GetCallingModule()
+    else:
+      second_module = other_flag_values.FindModuleDefiningFlag(
+          flagname, default='<unknown>')
+    msg = "The flag '%s' is defined twice. First from %s, Second from %s" % (
+        self.flagname, first_module, second_module)
+    DuplicateFlag.__init__(self, msg)
 
 
 class IllegalFlagValue(FlagsError):
@@ -893,6 +910,25 @@ class FlagValues:
         key_flags.append(flag)
     return key_flags
 
+  def FindModuleDefiningFlag(self, flagname, default=None):
+    """Return the name of the module defining this flag, or default.
+
+    Args:
+      flagname: Name of the flag to lookup.
+      default: Value to return if flagname is not defined. Defaults
+          to None.
+
+    Returns:
+      The name of the module which registered the flag with this name.
+      If no such module exists (i.e. no flag with this name exists),
+      we return default.
+    """
+    for module, flags in self.FlagsByModuleDict().iteritems():
+      for flag in flags:
+        if flag.name == flagname or flag.short_name == flagname:
+          return module
+    return default
+
   def AppendFlagValues(self, flag_values):
     """Appends flags registered in another FlagValues instance.
 
@@ -906,7 +942,11 @@ class FlagValues:
       # perform a check to make sure that the entry we're looking at is
       # for its normal name.
       if flag_name == flag.name:
-        self[flag_name] = flag
+        try:
+          self[flag_name] = flag
+        except DuplicateFlagError:
+          raise DuplicateFlagError(flag_name, self,
+                                   other_flag_values=flag_values)
 
   def RemoveFlagValues(self, flag_values):
     """Remove flags that were previously appended from another FlagValues.
@@ -2699,6 +2739,20 @@ def DEFINE_multi_int(name, default, help, lower_bound=None, upper_bound=None,
   integers.
   """
   parser = IntegerParser(lower_bound, upper_bound)
+  serializer = ArgumentSerializer()
+  DEFINE_multi(parser, serializer, name, default, help, flag_values, **args)
+
+
+def DEFINE_multi_float(name, default, help, lower_bound=None, upper_bound=None,
+                       flag_values=FLAGS, **args):
+  """Registers a flag whose value can be a list of arbitrary floats.
+
+  Use the flag on the command line multiple times to place multiple
+  float values into the list.  The 'default' may be a single float
+  (which will be converted into a single-element list) or a list of
+  floats.
+  """
+  parser = FloatParser(lower_bound, upper_bound)
   serializer = ArgumentSerializer()
   DEFINE_multi(parser, serializer, name, default, help, flag_values, **args)
 

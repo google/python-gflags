@@ -34,9 +34,10 @@
 __pychecker__ = "no-local" # for unittest
 
 
-import sys
 import os
+import re
 import shutil
+import sys
 import unittest
 
 # We use the name 'flags' internally in this test, for historical reasons.
@@ -164,7 +165,7 @@ class FlagsUnitTest(unittest.TestCase):
     assert flag_values['repeat'] == 4
     assert flag_values['name'] == 'Bob'
     assert flag_values['debug'] == 0
-    assert flag_values['r'] == 4       # short for of repeat
+    assert flag_values['r'] == 4       # short for repeat
     assert flag_values['q'] == 1
     assert flag_values['quack'] == 0
     assert flag_values['x'] == 3
@@ -573,6 +574,19 @@ class FlagsUnitTest(unittest.TestCase):
       self.assertTrue("First from" in e.args[0])
       self.assertTrue(", Second from" in e.args[0])
 
+    # Check that duplicate flag detection detects definition sites
+    # correctly.
+    flagnames = ["repeated"]
+    original_flags = flags.FlagValues()
+    flags.DEFINE_boolean(flagnames[0], False, "Flag about to be repeated.",
+                         flag_values=original_flags)
+    duplicate_flags = module_foo.DuplicateFlags(flagnames)
+    try:
+      original_flags.AppendFlagValues(duplicate_flags)
+    except flags.DuplicateFlagError, e:
+      self.assertTrue("flags_unittest" in str(e))
+      self.assertTrue("module_foo" in str(e))
+
     # Make sure allow_override works
     try:
       flags.DEFINE_boolean("dup1", 0, "runhelp d11", short_name='u',
@@ -795,6 +809,91 @@ class FlagsUnitTest(unittest.TestCase):
     (default: 'false')"""
 
     self.assertMultiLineEqual(expected_help, helpstr)
+
+
+class MultiNumericalFlagsTest(unittest.TestCase):
+
+  def assertListEqual(self, list1, list2):
+    """Asserts that, when sorted, list1 and list2 are identical."""
+    self.assertEqual(Sorted(list1), Sorted(list2))
+
+  def assertRaisesWithRegexpMatch(self, exception, regexp, fn, *args, **kwargs):
+    try:
+      fn(*args, **kwargs)
+    except exception, why:
+      self.assert_(re.search(regexp, str(why)),
+                   '"%s" does not match "%s"' % (regexp, why))
+      return
+    self.fail(exception.__name__ + ' not raised')
+
+  def testMultiNumericalFlags(self):
+    """Test multi_int and multi_float flags."""
+
+    int_defaults = [77, 88,]
+    flags.DEFINE_multi_int('m_int', int_defaults,
+                           'integer option that can occur multiple times',
+                           short_name='mi')
+    self.assertListEqual(FLAGS.get('m_int', None), int_defaults)
+    argv = ('./program', '--m_int=-99', '--mi=101')
+    FLAGS(argv)
+    self.assertListEqual(FLAGS.get('m_int', None), [-99, 101,])
+
+    float_defaults = [2.2, 3]
+    flags.DEFINE_multi_float('m_float', float_defaults,
+                             'float option that can occur multiple times',
+                             short_name='mf')
+    for (expected, actual) in zip(float_defaults, FLAGS.get('m_float', None)):
+      self.assertAlmostEquals(expected, actual)
+    argv = ('./program', '--m_float=-17', '--mf=2.78e9')
+    FLAGS(argv)
+    expected_floats = [-17.0, 2.78e9]
+    for (expected, actual) in zip(expected_floats, FLAGS.get('m_float', None)):
+      self.assertAlmostEquals(expected, actual)
+
+  def testSingleValueDefault(self):
+    """Test multi_int and multi_float flags with a single default value."""
+    int_default = 77
+    flags.DEFINE_multi_int('m_int1', int_default,
+                           'integer option that can occur multiple times')
+    self.assertListEqual(FLAGS.get('m_int1', None), [int_default])
+
+    float_default = 2.2
+    flags.DEFINE_multi_float('m_float1', float_default,
+                             'float option that can occur multiple times')
+    actual = FLAGS.get('m_float1', None)
+    self.assertEquals(1, len(actual))
+    self.assertAlmostEquals(actual[0], float_default)
+
+  def testBadMultiNumericalFlags(self):
+    """Test multi_int and multi_float flags with non-parseable values."""
+
+    # Test non-parseable defaults.
+    self.assertRaisesWithRegexpMatch(
+        flags.IllegalFlagValue,
+        'flag --m_int2=abc: invalid literal for long\(\) with base 10: \'abc\'',
+        flags.DEFINE_multi_int, 'm_int2', ['abc'], 'desc')
+
+    self.assertRaisesWithRegexpMatch(
+        flags.IllegalFlagValue,
+        'flag --m_float2=abc: invalid literal for float\(\): abc',
+        flags.DEFINE_multi_float, 'm_float2', ['abc'], 'desc')
+
+    # Test non-parseable command line values.
+    flags.DEFINE_multi_int('m_int2', '77',
+                           'integer option that can occur multiple times')
+    argv = ('./program', '--m_int2=def')
+    self.assertRaisesWithRegexpMatch(
+        flags.IllegalFlagValue,
+        'flag --m_int2=def: invalid literal for long\(\) with base 10: \'def\'',
+        FLAGS, argv)
+
+    flags.DEFINE_multi_float('m_float2', 2.2,
+                             'float option that can occur multiple times')
+    argv = ('./program', '--m_float2=def')
+    self.assertRaisesWithRegexpMatch(
+        flags.IllegalFlagValue,
+        'flag --m_float2=def: invalid literal for float\(\): def',
+        FLAGS, argv)
 
 
 class LoadFromFlagFileTest(unittest.TestCase):

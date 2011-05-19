@@ -123,3 +123,21 @@ def GetModuleName():
   # Calling the protected _GetCallingModule generates a lint warning,
   # but we do not have any other alternative to test that function.
   return flags._GetCallingModule()
+
+
+def DuplicateFlags(flagnames=None):
+  """Returns a new FlagValues object with the requested flagnames.
+
+  Used to test DuplicateFlagError detection.
+
+  Args:
+    flagnames: str, A list of flag names to create.
+
+  Returns:
+    A FlagValues object with one boolean flag for each name in flagnames.
+  """
+  flag_values = flags.FlagValues()
+  for name in flagnames:
+    flags.DEFINE_boolean(name, False, 'Flag named %s' % (name,),
+                         flag_values=flag_values)
+  return flag_values
