@@ -816,6 +816,13 @@ class FlagValues:
     self.UseGnuGetOpt(False)
 
   def UseGnuGetOpt(self, use_gnu_getopt=True):
+    """Use GNU-style scanning. Allows mixing of flag and non-flag arguments.
+
+    See http://docs.python.org/library/getopt.html#getopt.gnu_getopt
+
+    Args:
+      use_gnu_getopt: wether or not to use GNU style scanning.
+    """
     self.__dict__['__use_gnu_getopt'] = use_gnu_getopt
 
   def IsGnuGetOpt(self):

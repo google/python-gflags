@@ -928,10 +928,10 @@ class LoadFromFlagFileTest(unittest.TestCase):
     os.makedirs(tmp_path)
 
     try:
-      tmp_flag_file_1 = open((tmp_path + '/UnitTestFile1.tst'), 'w')
-      tmp_flag_file_2 = open((tmp_path + '/UnitTestFile2.tst'), 'w')
-      tmp_flag_file_3 = open((tmp_path + '/UnitTestFile3.tst'), 'w')
-      tmp_flag_file_4 = open((tmp_path + '/UnitTestFile4.tst'), 'w')
+      tmp_flag_file_1 = open(tmp_path + '/UnitTestFile1.tst', 'w')
+      tmp_flag_file_2 = open(tmp_path + '/UnitTestFile2.tst', 'w')
+      tmp_flag_file_3 = open(tmp_path + '/UnitTestFile3.tst', 'w')
+      tmp_flag_file_4 = open(tmp_path + '/UnitTestFile4.tst', 'w')
     except IOError, e_msg:
       print e_msg
       print 'FAIL\n File Creation problem in Unit Test'
@@ -961,7 +961,7 @@ class LoadFromFlagFileTest(unittest.TestCase):
     tmp_flag_file_4.write('--flagfile=%s\n' % tmp_flag_file_3.name)
     tmp_flag_file_4.write('--UnitTestMessage1=setFromTempFile3\n')
     tmp_flag_file_4.write('--UnitTestMessage1=setFromTempFile3\n')
-    os.fchmod(tmp_flag_file_4.fileno(), 0)
+    os.chmod(tmp_path + '/UnitTestFile4.tst', 0)
     file_list.append(tmp_flag_file_4.name)
 
     tmp_flag_file_1.close()
