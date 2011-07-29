@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-#
-# Copyright (c) 2007, Google Inc.
+
+# Copyright (c) 2006, Google Inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -29,6 +29,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+
 """gflags2man runs a Google flags base program and generates a man page.
 
 Run the program, parse the output, and then format that into a man
@@ -45,7 +46,7 @@ Usage:
 # extended to other document formats.
 # Inspired by help2man.
 
-__author__ = 'Dan Christian'
+
 
 import os
 import re
@@ -68,11 +69,12 @@ def _GetDefaultDestDir():
 
 FLAGS = gflags.FLAGS
 gflags.DEFINE_string('dest_dir', _GetDefaultDestDir(),
-                     'Directory to write resulting manpage to.'
-                     ' Specify \'-\' for stdout')
+                    'Directory to write resulting manpage to.'
+                    ' Specify \'-\' for stdout')
 gflags.DEFINE_string('help_flag', '--help',
-                     'Option to pass to target program in to get help')
+                    'Option to pass to target program in to get help')
 gflags.DEFINE_integer('v', 0, 'verbosity level to use for output')
+
 
 _MIN_VALID_USAGE_MSG = 9         # if fewer lines than this, help is suspect
 
@@ -86,6 +88,14 @@ class Logging:
   def vlog(self, level, msg):
     if FLAGS.v >= level: print msg
 logging = Logging()
+class App:
+  def usage(self, shorthelp=0):
+    print >>sys.stderr, __doc__
+    print >>sys.stderr, "flags:"
+    print >>sys.stderr, str(FLAGS)
+  def run(self):
+    main(sys.argv)
+app = App()
 
 
 def GetRealPath(filename):
@@ -143,7 +153,7 @@ class ProgramInfo(object):
   flag_tips_py_re    = re.compile(r'\s+\((.*)\)$')
 
   # Match a module block start, for c++ programs --help
-  # "google/base/commandlineflags"
+  # "google/base/commandlineflags":
   module_c_re = re.compile(r'\s+Flags from (\S.+):$')
   # match the start of a flag listing
   # " -v,--verbosity:  Logging verbosity"
@@ -517,9 +527,7 @@ class GenerateMan(GenerateDoc):
 def main(argv):
   argv = FLAGS(argv)           # handles help as well
   if len(argv) <= 1:
-    print >>sys.stderr, __doc__
-    print >>sys.stderr, "flags:"
-    print >>sys.stderr, str(FLAGS)
+    app.usage(shorthelp=1)
     return 1
 
   for arg in argv[1:]:
@@ -533,4 +541,4 @@ def main(argv):
   return 0
 
 if __name__ == '__main__':
-  main(sys.argv)
+  app.run()

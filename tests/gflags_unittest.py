@@ -34,90 +34,25 @@
 __pychecker__ = "no-local" # for unittest
 
 
-import os
-import re
-import shutil
 import sys
-import unittest
+import os
+import shutil
 
-# We use the name 'flags' internally in this test, for historical reasons.
-# Don't do this yourself! :-)  Just do 'import gflags; FLAGS=gflags.FLAGS; etc'
-import gflags as flags
-FLAGS=flags.FLAGS
+import gflags
+from flags_modules_for_testing import module_foo
+from flags_modules_for_testing import module_bar
+from flags_modules_for_testing import module_baz
 
-# For historic reasons, we use the name module_foo instead of
-# test_module_foo, and module_bar instead of test_module_bar.
-import test_module_foo as module_foo
-import test_module_bar as module_bar
-import test_module_baz as module_baz
+FLAGS=gflags.FLAGS
 
+import gflags_googletest as googletest
 
-def Sorted(lst):
-  """Equivalent of sorted(), but not dependent on python version."""
-  sorted_list = lst[:]
-  sorted_list.sort()
-  return sorted_list
-
-
-def MultiLineEqual(expected_help, help):
-  """Returns True if expected_help == help.  Otherwise returns False
-  and logs the difference in a human-readable way.
-  """
-  if help == expected_help:
-    return True
-
-  print "Error: FLAGS.MainModuleHelp() didn't return the expected result."
-  print "Got:"
-  print help
-  print "[End of got]"
-
-  help_lines = help.split('\n')
-  expected_help_lines = expected_help.split('\n')
-
-  num_help_lines = len(help_lines)
-  num_expected_help_lines = len(expected_help_lines)
-
-  if num_help_lines != num_expected_help_lines:
-    print "Number of help lines = %d, expected %d" % (
-        num_help_lines, num_expected_help_lines)
-
-  num_to_match = min(num_help_lines, num_expected_help_lines)
-
-  for i in range(num_to_match):
-    if help_lines[i] != expected_help_lines[i]:
-      print "One discrepancy: Got:"
-      print help_lines[i]
-      print "Expected:"
-      print expected_help_lines[i]
-      break
-  else:
-    # If we got here, found no discrepancy, print first new line.
-    if num_help_lines > num_expected_help_lines:
-      print "New help line:"
-      print help_lines[num_expected_help_lines]
-    elif num_expected_help_lines > num_help_lines:
-      print "Missing expected help line:"
-      print expected_help_lines[num_help_lines]
-    else:
-      print "Bug in this test -- discrepancy detected but not found."
-
-  return False
-
-
-class FlagsUnitTest(unittest.TestCase):
+class FlagsUnitTest(googletest.TestCase):
   "Flags Unit Test"
 
   def setUp(self):
     # make sure we are using the old, stupid way of parsing flags.
     FLAGS.UseGnuGetOpt(False)
-
-  def assertListEqual(self, list1, list2):
-    """Asserts that, when sorted, list1 and list2 are identical."""
-    self.assertEqual(Sorted(list1), Sorted(list2))
-
-  def assertMultiLineEqual(self, expected, actual):
-    self.assert_(MultiLineEqual(expected, actual))
-
 
   def test_flags(self):
 
@@ -127,18 +62,18 @@ class FlagsUnitTest(unittest.TestCase):
     # Define flags
     number_test_framework_flags = len(FLAGS.RegisteredFlags())
     repeatHelp = "how many times to repeat (0-5)"
-    flags.DEFINE_integer("repeat", 4, repeatHelp,
+    gflags.DEFINE_integer("repeat", 4, repeatHelp,
                          lower_bound=0, short_name='r')
-    flags.DEFINE_string("name", "Bob", "namehelp")
-    flags.DEFINE_boolean("debug", 0, "debughelp")
-    flags.DEFINE_boolean("q", 1, "quiet mode")
-    flags.DEFINE_boolean("quack", 0, "superstring of 'q'")
-    flags.DEFINE_boolean("noexec", 1, "boolean flag with no as prefix")
-    flags.DEFINE_integer("x", 3, "how eXtreme to be")
-    flags.DEFINE_integer("l", 0x7fffffff00000000L, "how long to be")
-    flags.DEFINE_list('letters', 'a,b,c', "a list of letters")
-    flags.DEFINE_list('numbers', [1, 2, 3], "a list of numbers")
-    flags.DEFINE_enum("kwery", None, ['who', 'what', 'why', 'where', 'when'],
+    gflags.DEFINE_string("name", "Bob", "namehelp")
+    gflags.DEFINE_boolean("debug", 0, "debughelp")
+    gflags.DEFINE_boolean("q", 1, "quiet mode")
+    gflags.DEFINE_boolean("quack", 0, "superstring of 'q'")
+    gflags.DEFINE_boolean("noexec", 1, "boolean flag with no as prefix")
+    gflags.DEFINE_integer("x", 3, "how eXtreme to be")
+    gflags.DEFINE_integer("l", 0x7fffffff00000000L, "how long to be")
+    gflags.DEFINE_list('letters', 'a,b,c', "a list of letters")
+    gflags.DEFINE_list('numbers', [1, 2, 3], "a list of numbers")
+    gflags.DEFINE_enum("kwery", None, ['who', 'what', 'why', 'where', 'when'],
                       "?")
 
     # Specify number of flags defined above.  The short_name defined
@@ -299,23 +234,16 @@ class FlagsUnitTest(unittest.TestCase):
     try:
       argv = FLAGS(argv)
       raise AssertionError("failed to detect invalid hex argument")
-    except flags.IllegalFlagValue:
-      pass
-
-    argv = ('./program', '--x', '0X123efg')
-    try:
-      argv = FLAGS(argv)
-      raise AssertionError("failed to detect invalid hex argument")
-    except flags.IllegalFlagValue:
+    except gflags.IllegalFlagValue:
       pass
 
     # Test boolean argument parsing
-    flags.DEFINE_boolean("test0", None, "test boolean parsing")
+    gflags.DEFINE_boolean("test0", None, "test boolean parsing")
     argv = ('./program', '--notest0')
     argv = FLAGS(argv)
     assert FLAGS.test0 == 0
 
-    flags.DEFINE_boolean("test1", None, "test boolean parsing")
+    gflags.DEFINE_boolean("test1", None, "test boolean parsing")
     argv = ('./program', '--test1')
     argv = FLAGS(argv)
     assert FLAGS.test1 == 1
@@ -352,16 +280,16 @@ class FlagsUnitTest(unittest.TestCase):
     assert FLAGS.noexec == 1
 
     # Test unassigned booleans
-    flags.DEFINE_boolean("testnone", None, "test boolean parsing")
+    gflags.DEFINE_boolean("testnone", None, "test boolean parsing")
     argv = ('./program',)
     argv = FLAGS(argv)
     assert FLAGS.testnone == None
 
     # Test get with default
-    flags.DEFINE_boolean("testget1", None, "test parsing with defaults")
-    flags.DEFINE_boolean("testget2", None, "test parsing with defaults")
-    flags.DEFINE_boolean("testget3", None, "test parsing with defaults")
-    flags.DEFINE_integer("testget4", None, "test parsing with defaults")
+    gflags.DEFINE_boolean("testget1", None, "test parsing with defaults")
+    gflags.DEFINE_boolean("testget2", None, "test parsing with defaults")
+    gflags.DEFINE_boolean("testget3", None, "test parsing with defaults")
+    gflags.DEFINE_integer("testget4", None, "test parsing with defaults")
     argv = ('./program','--testget1','--notestget2')
     argv = FLAGS(argv)
     assert FLAGS.get('testget1', 'foo') == 1
@@ -373,8 +301,8 @@ class FlagsUnitTest(unittest.TestCase):
     lists = [['hello','moo','boo','1'],
              [],]
 
-    flags.DEFINE_list('testlist', '', 'test lists parsing')
-    flags.DEFINE_spaceseplist('testspacelist', '', 'tests space lists parsing')
+    gflags.DEFINE_list('testlist', '', 'test lists parsing')
+    gflags.DEFINE_spaceseplist('testspacelist', '', 'tests space lists parsing')
 
     for name, sep in (('testlist', ','), ('testspacelist', ' '),
                       ('testspacelist', '\n')):
@@ -395,14 +323,14 @@ class FlagsUnitTest(unittest.TestCase):
     self.assertEqual(FLAGS.get('debug', None), 0)
 
     # Test MultiFlag with single default value
-    flags.DEFINE_multistring('s_str', 'sing1',
+    gflags.DEFINE_multistring('s_str', 'sing1',
                              'string option that can occur multiple times',
                              short_name='s')
     self.assertEqual(FLAGS.get('s_str', None), [ 'sing1', ])
 
     # Test MultiFlag with list of default values
     multi_string_defs = [ 'def1', 'def2', ]
-    flags.DEFINE_multistring('m_str', multi_string_defs,
+    gflags.DEFINE_multistring('m_str', multi_string_defs,
                              'string option that can occur multiple times',
                              short_name='m')
     self.assertEqual(FLAGS.get('m_str', None), multi_string_defs)
@@ -482,15 +410,15 @@ class FlagsUnitTest(unittest.TestCase):
       flagnames.sort()
       nonbool_flags = ['--%s %s' % (name, FLAGS.get(name, None))
                        for name in flagnames
-                       if not isinstance(FLAGS[name], flags.BooleanFlag)]
+                       if not isinstance(FLAGS[name], gflags.BooleanFlag)]
 
       truebool_flags = ['--%s' % (name)
                         for name in flagnames
-                        if isinstance(FLAGS[name], flags.BooleanFlag) and
+                        if isinstance(FLAGS[name], gflags.BooleanFlag) and
                           FLAGS.get(name, None)]
       falsebool_flags = ['--no%s' % (name)
                          for name in flagnames
-                         if isinstance(FLAGS[name], flags.BooleanFlag) and
+                         if isinstance(FLAGS[name], gflags.BooleanFlag) and
                            not FLAGS.get(name, None)]
       return ' '.join(nonbool_flags + truebool_flags + falsebool_flags)
 
@@ -509,13 +437,16 @@ class FlagsUnitTest(unittest.TestCase):
       "--numbers [1, 2, 3] "
       "--repeat 3 "
       "--s ['sing1'] --s_str ['sing1'] "
+      ""
+      ""
       "--testget4 None --testlist [] "
       "--testspacelist [] --x 10 "
       "--noexec --quack "
       "--test1 "
-      "--testget1 --tmod_baz_x --no? --nodebug --nohelp --nohelpshort --nohelpxml "
-      "--noq --notest0 --notestget2 "
-      "--notestget3 --notestnone")
+      "--testget1 --tmod_baz_x "
+      "--no? --nodebug --nohelp --nohelpshort --nohelpxml --noq "
+      ""
+      "--notest0 --notestget2 --notestget3 --notestnone")
 
     argv = ('./program', '--debug', '--m_str=upd1', '-s', 'upd2')
     FLAGS(argv)
@@ -535,41 +466,43 @@ class FlagsUnitTest(unittest.TestCase):
       "--numbers [1, 2, 3] "
       "--repeat 3 "
       "--s ['upd2'] --s_str ['upd2'] "
+      ""
+      ""
       "--testget4 None --testlist [] "
       "--testspacelist [] --x 10 "
       "--debug --noexec --quack "
       "--test1 "
-      "--testget1 --tmod_baz_x --no? --nohelp --nohelpshort --nohelpxml "
-      "--noq --notest0 --notestget2 "
-      "--notestget3 --notestnone")
-
+      "--testget1 --tmod_baz_x "
+      "--no? --nohelp --nohelpshort --nohelpxml --noq "
+      ""
+      "--notest0 --notestget2 --notestget3 --notestnone")
 
     ####################################
     # Test all kind of error conditions.
 
     # Duplicate flag detection
     try:
-      flags.DEFINE_boolean("run", 0, "runhelp", short_name='q')
+      gflags.DEFINE_boolean("run", 0, "runhelp", short_name='q')
       raise AssertionError("duplicate flag detection failed")
-    except flags.DuplicateFlag, e:
+    except gflags.DuplicateFlag, e:
       pass
 
     # Duplicate short flag detection
     try:
-      flags.DEFINE_boolean("zoom1", 0, "runhelp z1", short_name='z')
-      flags.DEFINE_boolean("zoom2", 0, "runhelp z2", short_name='z')
+      gflags.DEFINE_boolean("zoom1", 0, "runhelp z1", short_name='z')
+      gflags.DEFINE_boolean("zoom2", 0, "runhelp z2", short_name='z')
       raise AssertionError("duplicate short flag detection failed")
-    except flags.DuplicateFlag, e:
+    except gflags.DuplicateFlag, e:
       self.assertTrue("The flag 'z' is defined twice. " in e.args[0])
       self.assertTrue("First from" in e.args[0])
       self.assertTrue(", Second from" in e.args[0])
 
     # Duplicate mixed flag detection
     try:
-      flags.DEFINE_boolean("short1", 0, "runhelp s1", short_name='s')
-      flags.DEFINE_boolean("s", 0, "runhelp s2")
+      gflags.DEFINE_boolean("short1", 0, "runhelp s1", short_name='s')
+      gflags.DEFINE_boolean("s", 0, "runhelp s2")
       raise AssertionError("duplicate mixed flag detection failed")
-    except flags.DuplicateFlag, e:
+    except gflags.DuplicateFlag, e:
       self.assertTrue("The flag 's' is defined twice. " in e.args[0])
       self.assertTrue("First from" in e.args[0])
       self.assertTrue(", Second from" in e.args[0])
@@ -577,69 +510,69 @@ class FlagsUnitTest(unittest.TestCase):
     # Check that duplicate flag detection detects definition sites
     # correctly.
     flagnames = ["repeated"]
-    original_flags = flags.FlagValues()
-    flags.DEFINE_boolean(flagnames[0], False, "Flag about to be repeated.",
+    original_flags = gflags.FlagValues()
+    gflags.DEFINE_boolean(flagnames[0], False, "Flag about to be repeated.",
                          flag_values=original_flags)
     duplicate_flags = module_foo.DuplicateFlags(flagnames)
     try:
       original_flags.AppendFlagValues(duplicate_flags)
-    except flags.DuplicateFlagError, e:
+    except gflags.DuplicateFlagError, e:
       self.assertTrue("flags_unittest" in str(e))
       self.assertTrue("module_foo" in str(e))
 
     # Make sure allow_override works
     try:
-      flags.DEFINE_boolean("dup1", 0, "runhelp d11", short_name='u',
+      gflags.DEFINE_boolean("dup1", 0, "runhelp d11", short_name='u',
                            allow_override=0)
       flag = FLAGS.FlagDict()['dup1']
       self.assertEqual(flag.default, 0)
 
-      flags.DEFINE_boolean("dup1", 1, "runhelp d12", short_name='u',
+      gflags.DEFINE_boolean("dup1", 1, "runhelp d12", short_name='u',
                            allow_override=1)
       flag = FLAGS.FlagDict()['dup1']
       self.assertEqual(flag.default, 1)
-    except flags.DuplicateFlag, e:
+    except gflags.DuplicateFlag, e:
       raise AssertionError("allow_override did not permit a flag duplication")
 
     # Make sure allow_override works
     try:
-      flags.DEFINE_boolean("dup2", 0, "runhelp d21", short_name='u',
+      gflags.DEFINE_boolean("dup2", 0, "runhelp d21", short_name='u',
                            allow_override=1)
       flag = FLAGS.FlagDict()['dup2']
       self.assertEqual(flag.default, 0)
 
-      flags.DEFINE_boolean("dup2", 1, "runhelp d22", short_name='u',
+      gflags.DEFINE_boolean("dup2", 1, "runhelp d22", short_name='u',
                            allow_override=0)
       flag = FLAGS.FlagDict()['dup2']
       self.assertEqual(flag.default, 1)
-    except flags.DuplicateFlag, e:
+    except gflags.DuplicateFlag, e:
       raise AssertionError("allow_override did not permit a flag duplication")
 
     # Make sure allow_override doesn't work with None default
     try:
-      flags.DEFINE_boolean("dup3", 0, "runhelp d31", short_name='u3',
+      gflags.DEFINE_boolean("dup3", 0, "runhelp d31", short_name='u3',
                            allow_override=0)
       flag = FLAGS.FlagDict()['dup3']
       self.assertEqual(flag.default, 0)
 
-      flags.DEFINE_boolean("dup3", None, "runhelp d32", short_name='u3',
+      gflags.DEFINE_boolean("dup3", None, "runhelp d32", short_name='u3',
                            allow_override=1)
       raise AssertionError('Cannot override a flag with a default of None')
-    except flags.DuplicateFlagCannotPropagateNoneToSwig, e:
+    except gflags.DuplicateFlagCannotPropagateNoneToSwig, e:
       pass
 
     # Make sure that when we override, the help string gets updated correctly
-    flags.DEFINE_boolean("dup3", 0, "runhelp d31", short_name='u',
+    gflags.DEFINE_boolean("dup3", 0, "runhelp d31", short_name='u',
                          allow_override=1)
-    flags.DEFINE_boolean("dup3", 1, "runhelp d32", short_name='u',
+    gflags.DEFINE_boolean("dup3", 1, "runhelp d32", short_name='u',
                          allow_override=1)
     self.assert_(str(FLAGS).find('runhelp d31') == -1)
     self.assert_(str(FLAGS).find('runhelp d32') != -1)
 
     # Make sure AppendFlagValues works
-    new_flags = flags.FlagValues()
-    flags.DEFINE_boolean("new1", 0, "runhelp n1", flag_values=new_flags)
-    flags.DEFINE_boolean("new2", 0, "runhelp n2", flag_values=new_flags)
+    new_flags = gflags.FlagValues()
+    gflags.DEFINE_boolean("new1", 0, "runhelp n1", flag_values=new_flags)
+    gflags.DEFINE_boolean("new2", 0, "runhelp n2", flag_values=new_flags)
     self.assertEqual(len(new_flags.FlagDict()), 2)
     old_len = len(FLAGS.FlagDict())
     FLAGS.AppendFlagValues(new_flags)
@@ -654,9 +587,9 @@ class FlagsUnitTest(unittest.TestCase):
     self.assertFalse("new2" in FLAGS.FlagDict())
 
     # Make sure AppendFlagValues works with flags with shortnames.
-    new_flags = flags.FlagValues()
-    flags.DEFINE_boolean("new3", 0, "runhelp n3", flag_values=new_flags)
-    flags.DEFINE_boolean("new4", 0, "runhelp n4", flag_values=new_flags,
+    new_flags = gflags.FlagValues()
+    gflags.DEFINE_boolean("new3", 0, "runhelp n3", flag_values=new_flags)
+    gflags.DEFINE_boolean("new4", 0, "runhelp n4", flag_values=new_flags,
                          short_name="n4")
     self.assertEqual(len(new_flags.FlagDict()), 3)
     old_len = len(FLAGS.FlagDict())
@@ -675,13 +608,13 @@ class FlagsUnitTest(unittest.TestCase):
     self.assertFalse("n4" in FLAGS.FlagDict())
 
     # Make sure AppendFlagValues fails on duplicates
-    flags.DEFINE_boolean("dup4", 0, "runhelp d41")
-    new_flags = flags.FlagValues()
-    flags.DEFINE_boolean("dup4", 0, "runhelp d42", flag_values=new_flags)
+    gflags.DEFINE_boolean("dup4", 0, "runhelp d41")
+    new_flags = gflags.FlagValues()
+    gflags.DEFINE_boolean("dup4", 0, "runhelp d42", flag_values=new_flags)
     try:
       FLAGS.AppendFlagValues(new_flags)
       raise AssertionError("ignore_copy was not set but caused no exception")
-    except flags.DuplicateFlag, e:
+    except gflags.DuplicateFlag, e:
       pass
 
     # Integer out of bounds
@@ -690,7 +623,7 @@ class FlagsUnitTest(unittest.TestCase):
       FLAGS(argv)
       raise AssertionError('integer bounds exception not raised:'
                            + str(FLAGS.repeat))
-    except flags.IllegalFlagValue:
+    except gflags.IllegalFlagValue:
       pass
 
     # Non-integer
@@ -698,7 +631,7 @@ class FlagsUnitTest(unittest.TestCase):
       argv = ('./program', '--repeat=2.5')
       FLAGS(argv)
       raise AssertionError("malformed integer value exception not raised")
-    except flags.IllegalFlagValue:
+    except gflags.IllegalFlagValue:
       pass
 
     # Missing required arugment
@@ -706,7 +639,7 @@ class FlagsUnitTest(unittest.TestCase):
       argv = ('./program', '--name')
       FLAGS(argv)
       raise AssertionError("Flag argument required exception not raised")
-    except flags.FlagsError:
+    except gflags.FlagsError:
       pass
 
     # Non-boolean arguments for boolean
@@ -714,14 +647,14 @@ class FlagsUnitTest(unittest.TestCase):
       argv = ('./program', '--debug=goofup')
       FLAGS(argv)
       raise AssertionError("Illegal flag value exception not raised")
-    except flags.IllegalFlagValue:
+    except gflags.IllegalFlagValue:
       pass
 
     try:
       argv = ('./program', '--debug=42')
       FLAGS(argv)
       raise AssertionError("Illegal flag value exception not raised")
-    except flags.IllegalFlagValue:
+    except gflags.IllegalFlagValue:
       pass
 
 
@@ -730,11 +663,10 @@ class FlagsUnitTest(unittest.TestCase):
       argv = ('./program', '--repeat', 'Bob', 'extra')
       FLAGS(argv)
       raise AssertionError("Illegal flag value exception not raised")
-    except flags.IllegalFlagValue:
+    except gflags.IllegalFlagValue:
       pass
 
-  def test_module_help(self):
-    """Test ModuleHelp()."""
+    # Test ModuleHelp().
     helpstr = FLAGS.ModuleHelp(module_baz)
 
     expected_help = "\n" + module_baz.__name__ + ":" + """
@@ -743,8 +675,8 @@ class FlagsUnitTest(unittest.TestCase):
 
     self.assertMultiLineEqual(expected_help, helpstr)
 
-  def test_main_module_help(self):
-    """Test MainModuleHelp()."""
+    # Test MainModuleHelp().  This must be part of test_flags because
+    # it dpeends on dup1/2/3/etc being introduced first.
     helpstr = FLAGS.MainModuleHelp()
 
     expected_help = "\n" + sys.argv[0] + ':' + """
@@ -758,9 +690,6 @@ class FlagsUnitTest(unittest.TestCase):
     (default: 'true')
   --[no]dup4: runhelp d41
     (default: 'false')
-  -?,--[no]help: show this help
-  --[no]helpshort: show usage only for this module
-  --[no]helpxml: like --help, but generates XML output
   --kwery: <who|what|why|where|when>: ?
   --l: how long to be
     (default: '9223372032559808512')
@@ -808,29 +737,25 @@ class FlagsUnitTest(unittest.TestCase):
   -z,--[no]zoom1: runhelp z1
     (default: 'false')"""
 
+    # Insert the --help flags in their proper place.
+    help_help = """\
+  -?,--[no]help: show this help
+  --[no]helpshort: show usage only for this module
+  --[no]helpxml: like --help, but generates XML output
+"""
+    expected_help = expected_help.replace('  --kwery',
+                                          help_help + '  --kwery')
+
     self.assertMultiLineEqual(expected_help, helpstr)
 
 
-class MultiNumericalFlagsTest(unittest.TestCase):
-
-  def assertListEqual(self, list1, list2):
-    """Asserts that, when sorted, list1 and list2 are identical."""
-    self.assertEqual(Sorted(list1), Sorted(list2))
-
-  def assertRaisesWithRegexpMatch(self, exception, regexp, fn, *args, **kwargs):
-    try:
-      fn(*args, **kwargs)
-    except exception, why:
-      self.assert_(re.search(regexp, str(why)),
-                   '"%s" does not match "%s"' % (regexp, why))
-      return
-    self.fail(exception.__name__ + ' not raised')
+class MultiNumericalFlagsTest(googletest.TestCase):
 
   def testMultiNumericalFlags(self):
     """Test multi_int and multi_float flags."""
 
     int_defaults = [77, 88,]
-    flags.DEFINE_multi_int('m_int', int_defaults,
+    gflags.DEFINE_multi_int('m_int', int_defaults,
                            'integer option that can occur multiple times',
                            short_name='mi')
     self.assertListEqual(FLAGS.get('m_int', None), int_defaults)
@@ -839,7 +764,7 @@ class MultiNumericalFlagsTest(unittest.TestCase):
     self.assertListEqual(FLAGS.get('m_int', None), [-99, 101,])
 
     float_defaults = [2.2, 3]
-    flags.DEFINE_multi_float('m_float', float_defaults,
+    gflags.DEFINE_multi_float('m_float', float_defaults,
                              'float option that can occur multiple times',
                              short_name='mf')
     for (expected, actual) in zip(float_defaults, FLAGS.get('m_float', None)):
@@ -853,12 +778,12 @@ class MultiNumericalFlagsTest(unittest.TestCase):
   def testSingleValueDefault(self):
     """Test multi_int and multi_float flags with a single default value."""
     int_default = 77
-    flags.DEFINE_multi_int('m_int1', int_default,
+    gflags.DEFINE_multi_int('m_int1', int_default,
                            'integer option that can occur multiple times')
     self.assertListEqual(FLAGS.get('m_int1', None), [int_default])
 
     float_default = 2.2
-    flags.DEFINE_multi_float('m_float1', float_default,
+    gflags.DEFINE_multi_float('m_float1', float_default,
                              'float option that can occur multiple times')
     actual = FLAGS.get('m_float1', None)
     self.assertEquals(1, len(actual))
@@ -869,49 +794,49 @@ class MultiNumericalFlagsTest(unittest.TestCase):
 
     # Test non-parseable defaults.
     self.assertRaisesWithRegexpMatch(
-        flags.IllegalFlagValue,
+        gflags.IllegalFlagValue,
         'flag --m_int2=abc: invalid literal for long\(\) with base 10: \'abc\'',
-        flags.DEFINE_multi_int, 'm_int2', ['abc'], 'desc')
+        gflags.DEFINE_multi_int, 'm_int2', ['abc'], 'desc')
 
     self.assertRaisesWithRegexpMatch(
-        flags.IllegalFlagValue,
+        gflags.IllegalFlagValue,
         'flag --m_float2=abc: invalid literal for float\(\): abc',
-        flags.DEFINE_multi_float, 'm_float2', ['abc'], 'desc')
+        gflags.DEFINE_multi_float, 'm_float2', ['abc'], 'desc')
 
     # Test non-parseable command line values.
-    flags.DEFINE_multi_int('m_int2', '77',
+    gflags.DEFINE_multi_int('m_int2', '77',
                            'integer option that can occur multiple times')
     argv = ('./program', '--m_int2=def')
     self.assertRaisesWithRegexpMatch(
-        flags.IllegalFlagValue,
+        gflags.IllegalFlagValue,
         'flag --m_int2=def: invalid literal for long\(\) with base 10: \'def\'',
         FLAGS, argv)
 
-    flags.DEFINE_multi_float('m_float2', 2.2,
+    gflags.DEFINE_multi_float('m_float2', 2.2,
                              'float option that can occur multiple times')
     argv = ('./program', '--m_float2=def')
     self.assertRaisesWithRegexpMatch(
-        flags.IllegalFlagValue,
+        gflags.IllegalFlagValue,
         'flag --m_float2=def: invalid literal for float\(\): def',
         FLAGS, argv)
 
 
-class LoadFromFlagFileTest(unittest.TestCase):
+class LoadFromFlagFileTest(googletest.TestCase):
   """Testing loading flags from a file and parsing them."""
 
   def setUp(self):
-    self.flag_values = flags.FlagValues()
+    self.flag_values = gflags.FlagValues()
     # make sure we are using the old, stupid way of parsing flags.
     self.flag_values.UseGnuGetOpt(False)
-    flags.DEFINE_string('UnitTestMessage1', 'Foo!', 'You Add Here.',
+    gflags.DEFINE_string('UnitTestMessage1', 'Foo!', 'You Add Here.',
                         flag_values=self.flag_values)
-    flags.DEFINE_string('UnitTestMessage2', 'Bar!', 'Hello, Sailor!',
+    gflags.DEFINE_string('UnitTestMessage2', 'Bar!', 'Hello, Sailor!',
                         flag_values=self.flag_values)
-    flags.DEFINE_boolean('UnitTestBoolFlag', 0, 'Some Boolean thing',
+    gflags.DEFINE_boolean('UnitTestBoolFlag', 0, 'Some Boolean thing',
                          flag_values=self.flag_values)
-    flags.DEFINE_integer('UnitTestNumber', 12345, 'Some integer',
+    gflags.DEFINE_integer('UnitTestNumber', 12345, 'Some integer',
                          lower_bound=0, flag_values=self.flag_values)
-    flags.DEFINE_list('UnitTestList', "1,2,3", 'Some list',
+    gflags.DEFINE_list('UnitTestList', "1,2,3", 'Some list',
                       flag_values=self.flag_values)
     self.files_to_delete = []
 
@@ -1124,7 +1049,7 @@ class LoadFromFlagFileTest(unittest.TestCase):
     fake_cmd_line = ('fooScript --SomeFlag some_arg --flagfile=%s'
                      % tmp_files[3])
     fake_argv = fake_cmd_line.split(' ')
-    self.assertRaises(flags.CantOpenFlagFileError,
+    self.assertRaises(gflags.CantOpenFlagFileError,
                       self._ReadFlagsFromFiles, fake_argv, True)
 
   def testMethod_flagfiles_NotFound(self):
@@ -1134,7 +1059,7 @@ class LoadFromFlagFileTest(unittest.TestCase):
     fake_cmd_line = ('fooScript --SomeFlag some_arg --flagfile=%sNOTEXIST'
                      % tmp_files[3])
     fake_argv = fake_cmd_line.split(' ')
-    self.assertRaises(flags.CantOpenFlagFileError,
+    self.assertRaises(gflags.CantOpenFlagFileError,
                       self._ReadFlagsFromFiles, fake_argv, True)
 
   def test_flagfiles_user_path_expansion(self):
@@ -1226,32 +1151,32 @@ class LoadFromFlagFileTest(unittest.TestCase):
     self.assertEqual(self.flag_values.UnitTestList, ['7', '8', '9'])
 
     # Test that setting invalid defaults raises exceptions
-    self.assertRaises(flags.IllegalFlagValue,
+    self.assertRaises(gflags.IllegalFlagValue,
                       self.flag_values['UnitTestNumber'].SetDefault, 'oops')
-    self.assertRaises(flags.IllegalFlagValue,
+    self.assertRaises(gflags.IllegalFlagValue,
                       self.flag_values.SetDefault, 'UnitTestNumber', -1)
 
 
-class FlagsParsingTest(unittest.TestCase):
+class FlagsParsingTest(googletest.TestCase):
   """Testing different aspects of parsing: '-f' vs '--flag', etc."""
 
   def setUp(self):
-    self.flag_values = flags.FlagValues()
+    self.flag_values = gflags.FlagValues()
 
   def testMethod_ShortestUniquePrefixes(self):
     """Test FlagValues.ShortestUniquePrefixes"""
 
-    flags.DEFINE_string('a', '', '', flag_values=self.flag_values)
-    flags.DEFINE_string('abc', '', '', flag_values=self.flag_values)
-    flags.DEFINE_string('common_a_string', '', '', flag_values=self.flag_values)
-    flags.DEFINE_boolean('common_b_boolean', 0, '',
+    gflags.DEFINE_string('a', '', '', flag_values=self.flag_values)
+    gflags.DEFINE_string('abc', '', '', flag_values=self.flag_values)
+    gflags.DEFINE_string('common_a_string', '', '', flag_values=self.flag_values)
+    gflags.DEFINE_boolean('common_b_boolean', 0, '',
                          flag_values=self.flag_values)
-    flags.DEFINE_boolean('common_c_boolean', 0, '',
+    gflags.DEFINE_boolean('common_c_boolean', 0, '',
                          flag_values=self.flag_values)
-    flags.DEFINE_boolean('common', 0, '', flag_values=self.flag_values)
-    flags.DEFINE_integer('commonly', 0, '', flag_values=self.flag_values)
-    flags.DEFINE_boolean('zz', 0, '', flag_values=self.flag_values)
-    flags.DEFINE_integer('nozz', 0, '', flag_values=self.flag_values)
+    gflags.DEFINE_boolean('common', 0, '', flag_values=self.flag_values)
+    gflags.DEFINE_integer('commonly', 0, '', flag_values=self.flag_values)
+    gflags.DEFINE_boolean('zz', 0, '', flag_values=self.flag_values)
+    gflags.DEFINE_integer('nozz', 0, '', flag_values=self.flag_values)
 
     shorter_flags = self.flag_values.ShortestUniquePrefixes(
         self.flag_values.FlagDict())
@@ -1283,9 +1208,9 @@ class FlagsParsingTest(unittest.TestCase):
     self.flag_values.__delattr__('nozz')
 
   def test_twodasharg_first(self):
-    flags.DEFINE_string("twodash_name", "Bob", "namehelp",
+    gflags.DEFINE_string("twodash_name", "Bob", "namehelp",
                         flag_values=self.flag_values)
-    flags.DEFINE_string("twodash_blame", "Rob", "blamehelp",
+    gflags.DEFINE_string("twodash_blame", "Rob", "blamehelp",
                         flag_values=self.flag_values)
     argv = ('./program',
             '--',
@@ -1295,9 +1220,9 @@ class FlagsParsingTest(unittest.TestCase):
     self.assertEqual(argv[1], '--twodash_name=Harry')
 
   def test_twodasharg_middle(self):
-    flags.DEFINE_string("twodash2_name", "Bob", "namehelp",
+    gflags.DEFINE_string("twodash2_name", "Bob", "namehelp",
                         flag_values=self.flag_values)
-    flags.DEFINE_string("twodash2_blame", "Rob", "blamehelp",
+    gflags.DEFINE_string("twodash2_blame", "Rob", "blamehelp",
                         flag_values=self.flag_values)
     argv = ('./program',
             '--twodash2_blame=Larry',
@@ -1309,9 +1234,9 @@ class FlagsParsingTest(unittest.TestCase):
     self.assertEqual(argv[1], '--twodash2_name=Harry')
 
   def test_onedasharg_first(self):
-    flags.DEFINE_string("onedash_name", "Bob", "namehelp",
+    gflags.DEFINE_string("onedash_name", "Bob", "namehelp",
                         flag_values=self.flag_values)
-    flags.DEFINE_string("onedash_blame", "Rob", "blamehelp",
+    gflags.DEFINE_string("onedash_blame", "Rob", "blamehelp",
                         flag_values=self.flag_values)
     argv = ('./program',
             '-',
@@ -1324,13 +1249,13 @@ class FlagsParsingTest(unittest.TestCase):
     # - This requires gnu_getopt from Python 2.3+ see FLAGS.UseGnuGetOpt()
 
   def test_unrecognized_flags(self):
-    flags.DEFINE_string("name", "Bob", "namehelp", flag_values=self.flag_values)
+    gflags.DEFINE_string("name", "Bob", "namehelp", flag_values=self.flag_values)
     # Unknown flag --nosuchflag
     try:
       argv = ('./program', '--nosuchflag', '--name=Bob', 'extra')
       self.flag_values(argv)
       raise AssertionError("Unknown flag exception not raised")
-    except flags.UnrecognizedFlag, e:
+    except gflags.UnrecognizedFlag, e:
       assert e.flagname == 'nosuchflag'
       assert e.flagvalue == '--nosuchflag'
 
@@ -1339,7 +1264,7 @@ class FlagsParsingTest(unittest.TestCase):
       argv = ('./program', '-w', '--name=Bob', 'extra')
       self.flag_values(argv)
       raise AssertionError("Unknown flag exception not raised")
-    except flags.UnrecognizedFlag, e:
+    except gflags.UnrecognizedFlag, e:
       assert e.flagname == 'w'
       assert e.flagvalue == '-w'
 
@@ -1348,7 +1273,7 @@ class FlagsParsingTest(unittest.TestCase):
       argv = ('./program', '--nosuchflagwithparam=foo', '--name=Bob', 'extra')
       self.flag_values(argv)
       raise AssertionError("Unknown flag exception not raised")
-    except flags.UnrecognizedFlag, e:
+    except gflags.UnrecognizedFlag, e:
       assert e.flagname == 'nosuchflagwithparam'
       assert e.flagvalue == '--nosuchflagwithparam=foo'
 
@@ -1374,7 +1299,7 @@ class FlagsParsingTest(unittest.TestCase):
               '--undefok=nosuchfla', 'extra')
       self.flag_values(argv)
       raise AssertionError("Unknown flag exception not raised")
-    except flags.UnrecognizedFlag, e:
+    except gflags.UnrecognizedFlag, e:
       assert e.flagname == 'nosuchflag'
 
     try:
@@ -1382,7 +1307,7 @@ class FlagsParsingTest(unittest.TestCase):
               '--undefok=nosuchflagg', 'extra')
       self.flag_values(argv)
       raise AssertionError("Unknown flag exception not raised")
-    except flags.UnrecognizedFlag:
+    except gflags.UnrecognizedFlag:
       assert e.flagname == 'nosuchflag'
 
     # Allow unknown short flag -w if specified with undefok
@@ -1417,7 +1342,7 @@ class FlagsParsingTest(unittest.TestCase):
               '--undefok=another_such', 'extra')
       self.flag_values(argv)
       raise AssertionError("Unknown flag exception not raised")
-    except flags.UnrecognizedFlag, e:
+    except gflags.UnrecognizedFlag, e:
       assert e.flagname == 'nosuchflag'
 
     # Make sure --undefok doesn't mask other option errors.
@@ -1426,9 +1351,9 @@ class FlagsParsingTest(unittest.TestCase):
       argv = ('./program', '--undefok=name', '--name')
       self.flag_values(argv)
       raise AssertionError("Missing option parameter exception not raised")
-    except flags.UnrecognizedFlag:
+    except gflags.UnrecognizedFlag:
       raise AssertionError("Wrong kind of error exception raised")
-    except flags.FlagsError:
+    except gflags.FlagsError:
       pass
 
     # Test --undefok <list>
@@ -1443,12 +1368,12 @@ class FlagsParsingTest(unittest.TestCase):
     assert argv[1]=='extra', "extra argument not preserved"
 
 
-class NonGlobalFlagsTest(unittest.TestCase):
+class NonGlobalFlagsTest(googletest.TestCase):
 
   def test_nonglobal_flags(self):
     """Test use of non-global FlagValues"""
-    nonglobal_flags = flags.FlagValues()
-    flags.DEFINE_string("nonglobal_flag", "Bob", "flaghelp", nonglobal_flags)
+    nonglobal_flags = gflags.FlagValues()
+    gflags.DEFINE_string("nonglobal_flag", "Bob", "flaghelp", nonglobal_flags)
     argv = ('./program',
             '--nonglobal_flag=Mary',
             'extra')
@@ -1460,13 +1385,13 @@ class NonGlobalFlagsTest(unittest.TestCase):
 
   def test_unrecognized_nonglobal_flags(self):
     """Test unrecognized non-global flags"""
-    nonglobal_flags = flags.FlagValues()
+    nonglobal_flags = gflags.FlagValues()
     argv = ('./program',
             '--nosuchflag')
     try:
       argv = nonglobal_flags(argv)
       raise AssertionError("Unknown flag exception not raised")
-    except flags.UnrecognizedFlag, e:
+    except gflags.UnrecognizedFlag, e:
       assert e.flagname == 'nosuchflag'
       pass
 
@@ -1483,21 +1408,21 @@ class NonGlobalFlagsTest(unittest.TestCase):
     # from creating their own instances. This test makes sure that
     # people modifying the flags module understand that the external
     # mechanisms for creating the exceptions should continue to work.
-    e = flags.FlagsError()
-    e = flags.FlagsError("message")
-    e = flags.DuplicateFlag()
-    e = flags.DuplicateFlag("message")
-    e = flags.IllegalFlagValue()
-    e = flags.IllegalFlagValue("message")
-    e = flags.UnrecognizedFlag()
-    e = flags.UnrecognizedFlag("message")
+    e = gflags.FlagsError()
+    e = gflags.FlagsError("message")
+    e = gflags.DuplicateFlag()
+    e = gflags.DuplicateFlag("message")
+    e = gflags.IllegalFlagValue()
+    e = gflags.IllegalFlagValue("message")
+    e = gflags.UnrecognizedFlag()
+    e = gflags.UnrecognizedFlag("message")
 
   def testFlagValuesDelAttr(self):
     """Checks that del self.flag_values.flag_id works."""
     default_value = 'default value for testFlagValuesDelAttr'
     # 1. Declare and delete a flag with no short name.
-    flag_values = flags.FlagValues()
-    flags.DEFINE_string('delattr_foo', default_value, 'A simple flag.',
+    flag_values = gflags.FlagValues()
+    gflags.DEFINE_string('delattr_foo', default_value, 'A simple flag.',
                         flag_values=flag_values)
     self.assertEquals(flag_values.delattr_foo, default_value)
     flag_obj = flag_values['delattr_foo']
@@ -1508,14 +1433,14 @@ class NonGlobalFlagsTest(unittest.TestCase):
     self.assertFalse(flag_values._FlagIsRegistered(flag_obj))
     # If the previous del FLAGS.delattr_foo did not work properly, the
     # next definition will trigger a redefinition error.
-    flags.DEFINE_integer('delattr_foo', 3, 'A simple flag.',
+    gflags.DEFINE_integer('delattr_foo', 3, 'A simple flag.',
                          flag_values=flag_values)
     del flag_values.delattr_foo
 
     self.assertFalse('delattr_foo' in flag_values.RegisteredFlags())
 
     # 2. Declare and delete a flag with a short name.
-    flags.DEFINE_string('delattr_bar', default_value, 'flag with short name',
+    gflags.DEFINE_string('delattr_bar', default_value, 'flag with short name',
                         short_name='x5', flag_values=flag_values)
     flag_obj = flag_values['delattr_bar']
     self.assertTrue(flag_values._FlagIsRegistered(flag_obj))
@@ -1525,7 +1450,7 @@ class NonGlobalFlagsTest(unittest.TestCase):
     self.assertFalse(flag_values._FlagIsRegistered(flag_obj))
 
     # 3. Just like 2, but del flag_values.name last
-    flags.DEFINE_string('delattr_bar', default_value, 'flag with short name',
+    gflags.DEFINE_string('delattr_bar', default_value, 'flag with short name',
                         short_name='x5', flag_values=flag_values)
     flag_obj = flag_values['delattr_bar']
     self.assertTrue(flag_values._FlagIsRegistered(flag_obj))
@@ -1538,18 +1463,10 @@ class NonGlobalFlagsTest(unittest.TestCase):
     self.assertFalse('x5' in flag_values.RegisteredFlags())
 
 
-class KeyFlagsTest(unittest.TestCase):
+class KeyFlagsTest(googletest.TestCase):
 
   def setUp(self):
-    self.flag_values = flags.FlagValues()
-
-  def assertListEqual(self, list1, list2):
-    """Asserts that, when sorted, list1 and list2 are identical."""
-    self.assertEqual(Sorted(list1), Sorted(list2))
-
-  def assertMultiLineEqual(self, s1, s2):
-    """Could do fancy diffing, but for now, just do a normal compare."""
-    self.assertEqual(s1, s2)
+    self.flag_values = gflags.FlagValues()
 
   def _GetNamesOfDefinedFlags(self, module, flag_values):
     """Returns the list of names of flags defined by a module.
@@ -1617,7 +1534,7 @@ class KeyFlagsTest(unittest.TestCase):
             self._GetNamesOfDefinedFlags(module, self.flag_values),
             module.NamesOfDefinedFlags())
 
-      # Part 2. Check that flags.DECLARE_key_flag works fine.
+      # Part 2. Check that gflags.DECLARE_key_flag works fine.
       # Declare that some flags from module_bar are key for
       # module_foo.
       module_foo.DeclareKeyFlags(flag_values=self.flag_values)
@@ -1632,8 +1549,8 @@ class KeyFlagsTest(unittest.TestCase):
           self._GetNamesOfKeyFlags(module_foo, self.flag_values),
           module_foo.NamesOfDeclaredKeyFlags())
 
-      # Part 3. Check that flags.ADOPT_module_key_flags works fine.
-      # Trigger a call to flags.ADOPT_module_key_flags(module_bar)
+      # Part 3. Check that gflags.ADOPT_module_key_flags works fine.
+      # Trigger a call to gflags.ADOPT_module_key_flags(module_bar)
       # inside module_foo.  This should declare a few more key
       # flags in module_foo.
       module_foo.DeclareExtraKeyFlags(flag_values=self.flag_values)
@@ -1648,15 +1565,15 @@ class KeyFlagsTest(unittest.TestCase):
 
   def testKeyFlagsWithNonDefaultFlagValuesObject(self):
     # Check that key flags work even when we use a FlagValues object
-    # that is not the default flags.self.flag_values object.  Otherwise, this
+    # that is not the default gflags.self.flag_values object.  Otherwise, this
     # test is similar to testKeyFlags, but it uses only module_bar.
     # The other test module (module_foo) uses only the default values
     # for the flag_values keyword arguments.  This way, testKeyFlags
     # and this method test both the default FlagValues, the explicitly
     # specified one, and a mixed usage of the two.
 
-    # A brand-new FlagValues object, to use instead of flags.self.flag_values.
-    fv = flags.FlagValues()
+    # A brand-new FlagValues object, to use instead of gflags.self.flag_values.
+    fv = gflags.FlagValues()
 
     # Before starting any testing, make sure no flags are already
     # defined for module_foo and module_bar.
@@ -1679,38 +1596,38 @@ class KeyFlagsTest(unittest.TestCase):
         module_bar.NamesOfDefinedFlags())
 
     # Pick two flags from module_bar, declare them as key for the
-    # current (i.e., main) module (via flags.DECLARE_key_flag), and
+    # current (i.e., main) module (via gflags.DECLARE_key_flag), and
     # check that we get the expected effect.  The important thing is
     # that we always use flags_values=fv (instead of the default
     # self.flag_values).
-    main_module = flags._GetMainModule()
+    main_module = gflags._GetMainModule()
     names_of_flags_defined_by_bar = module_bar.NamesOfDefinedFlags()
     flag_name_0 = names_of_flags_defined_by_bar[0]
     flag_name_2 = names_of_flags_defined_by_bar[2]
 
-    flags.DECLARE_key_flag(flag_name_0, flag_values=fv)
+    gflags.DECLARE_key_flag(flag_name_0, flag_values=fv)
     self._AssertListsHaveSameElements(
         self._GetNamesOfKeyFlags(main_module, fv),
         [flag_name_0])
 
-    flags.DECLARE_key_flag(flag_name_2, flag_values=fv)
+    gflags.DECLARE_key_flag(flag_name_2, flag_values=fv)
     self._AssertListsHaveSameElements(
         self._GetNamesOfKeyFlags(main_module, fv),
         [flag_name_0, flag_name_2])
 
     # Try with a special (not user-defined) flag too:
-    flags.DECLARE_key_flag('undefok', flag_values=fv)
+    gflags.DECLARE_key_flag('undefok', flag_values=fv)
     self._AssertListsHaveSameElements(
         self._GetNamesOfKeyFlags(main_module, fv),
         [flag_name_0, flag_name_2, 'undefok'])
 
-    flags.ADOPT_module_key_flags(module_bar, fv)
+    gflags.ADOPT_module_key_flags(module_bar, fv)
     self._AssertListsHaveSameElements(
         self._GetNamesOfKeyFlags(main_module, fv),
         names_of_flags_defined_by_bar + ['undefok'])
 
-    # Adopt key flags from the module google3.pyglib.flags itself.
-    flags.ADOPT_module_key_flags(flags, flag_values=fv)
+    # Adopt key flags from the flags module itself.
+    gflags.ADOPT_module_key_flags(gflags, flag_values=fv)
     self._AssertListsHaveSameElements(
         self._GetNamesOfKeyFlags(main_module, fv),
         names_of_flags_defined_by_bar + ['flagfile', 'undefok'])
@@ -1727,7 +1644,7 @@ class KeyFlagsTest(unittest.TestCase):
     # Define one flag in this main module and some flags in modules
     # a and b.  Also declare one flag from module a and one flag
     # from module b as key flags for the main module.
-    flags.DEFINE_integer('main_module_int_fg', 1,
+    gflags.DEFINE_integer('main_module_int_fg', 1,
                          'Integer flag in the main module.',
                          flag_values=self.flag_values)
 
@@ -1737,15 +1654,13 @@ class KeyFlagsTest(unittest.TestCase):
           "    (default: '1')\n"
           "    (an integer)")
 
-      expected_help += "\n%s:" % (sys.argv[0])
-
-      expected_help += "\n" + main_module_int_fg_help
+      expected_help += "\n%s:\n%s" % (sys.argv[0], main_module_int_fg_help)
       self.assertMultiLineEqual(expected_help,
                                 self.flag_values.MainModuleHelp())
 
       # The following call should be a no-op: any flag declared by a
       # module is automatically key for that module.
-      flags.DECLARE_key_flag('main_module_int_fg', flag_values=self.flag_values)
+      gflags.DECLARE_key_flag('main_module_int_fg', flag_values=self.flag_values)
       self.assertMultiLineEqual(expected_help,
                                 self.flag_values.MainModuleHelp())
 
@@ -1755,7 +1670,7 @@ class KeyFlagsTest(unittest.TestCase):
       self.assertMultiLineEqual(expected_help,
                                 self.flag_values.MainModuleHelp())
 
-      flags.DECLARE_key_flag('tmod_foo_bool', flag_values=self.flag_values)
+      gflags.DECLARE_key_flag('tmod_foo_bool', flag_values=self.flag_values)
       tmod_foo_bool_help = (
           "  --[no]tmod_foo_bool: Boolean flag from module foo.\n"
           "    (default: 'true')")
@@ -1763,7 +1678,7 @@ class KeyFlagsTest(unittest.TestCase):
       self.assertMultiLineEqual(expected_help,
                                 self.flag_values.MainModuleHelp())
 
-      flags.DECLARE_key_flag('tmod_bar_z', flag_values=self.flag_values)
+      gflags.DECLARE_key_flag('tmod_bar_z', flag_values=self.flag_values)
       tmod_bar_z_help = (
           "  --[no]tmod_bar_z: Another boolean flag from module bar.\n"
           "    (default: 'false')")
@@ -1786,22 +1701,22 @@ class KeyFlagsTest(unittest.TestCase):
   def test_ADOPT_module_key_flags(self):
     # Check that ADOPT_module_key_flags raises an exception when
     # called with a module name (as opposed to a module object).
-    self.assertRaises(flags.FlagsError,
-                      flags.ADOPT_module_key_flags,
-                      'google3.pyglib.app')
+    self.assertRaises(gflags.FlagsError,
+                      gflags.ADOPT_module_key_flags,
+                      'pyglib.app')
 
 
-class GetCallingModuleTest(unittest.TestCase):
+class GetCallingModuleTest(googletest.TestCase):
   """Test whether we correctly determine the module which defines the flag."""
 
   def test_GetCallingModule(self):
-    self.assertEqual(flags._GetCallingModule(), sys.argv[0])
+    self.assertEqual(gflags._GetCallingModule(), sys.argv[0])
     self.assertEqual(
         module_foo.GetModuleName(),
-        'test_module_foo')
+        'flags_modules_for_testing.module_foo')
     self.assertEqual(
         module_bar.GetModuleName(),
-        'test_module_bar')
+        'flags_modules_for_testing.module_bar')
 
     # We execute the following exec statements for their side-effect
     # (i.e., not raising an error).  They emphasize the case that not
@@ -1838,7 +1753,7 @@ class GetCallingModuleTest(unittest.TestCase):
     module_bar.ExecuteCode(code, global_dict)
     self.assertEqual(
         global_dict['module_name'],
-        'test_module_bar')
+        'flags_modules_for_testing.module_bar')
 
   def test_GetCallingModuleWithIteritemsError(self):
     # This test checks that _GetCallingModule is using
@@ -1858,39 +1773,39 @@ class GetCallingModuleTest(unittest.TestCase):
     sys.modules = SysModulesMock(orig_sys_modules)
     try:
       # _GetCallingModule should still work as expected:
-      self.assertEqual(flags._GetCallingModule(), sys.argv[0])
+      self.assertEqual(gflags._GetCallingModule(), sys.argv[0])
       self.assertEqual(
           module_foo.GetModuleName(),
-          'test_module_foo')
+          'flags_modules_for_testing.module_foo')
     finally:
       sys.modules = orig_sys_modules
 
 
-class FlagsErrorMessagesTest(unittest.TestCase):
+class FlagsErrorMessagesTest(googletest.TestCase):
   """Testing special cases for integer and float flags error messages."""
 
   def setUp(self):
     # make sure we are using the old, stupid way of parsing flags.
-    self.flag_values = flags.FlagValues()
+    self.flag_values = gflags.FlagValues()
     self.flag_values.UseGnuGetOpt(False)
 
   def testIntegerErrorText(self):
     # Make sure we get proper error text
-    flags.DEFINE_integer('positive', 4, 'non-negative flag', lower_bound=1,
+    gflags.DEFINE_integer('positive', 4, 'non-negative flag', lower_bound=1,
                          flag_values=self.flag_values)
-    flags.DEFINE_integer('non_negative', 4, 'positive flag', lower_bound=0,
+    gflags.DEFINE_integer('non_negative', 4, 'positive flag', lower_bound=0,
                          flag_values=self.flag_values)
-    flags.DEFINE_integer('negative', -4, 'negative flag', upper_bound=-1,
+    gflags.DEFINE_integer('negative', -4, 'negative flag', upper_bound=-1,
                          flag_values=self.flag_values)
-    flags.DEFINE_integer('non_positive', -4, 'non-positive flag', upper_bound=0,
+    gflags.DEFINE_integer('non_positive', -4, 'non-positive flag', upper_bound=0,
                          flag_values=self.flag_values)
-    flags.DEFINE_integer('greater', 19, 'greater-than flag', lower_bound=4,
+    gflags.DEFINE_integer('greater', 19, 'greater-than flag', lower_bound=4,
                          flag_values=self.flag_values)
-    flags.DEFINE_integer('smaller', -19, 'smaller-than flag', upper_bound=4,
+    gflags.DEFINE_integer('smaller', -19, 'smaller-than flag', upper_bound=4,
                          flag_values=self.flag_values)
-    flags.DEFINE_integer('usual', 4, 'usual flag', lower_bound=0,
+    gflags.DEFINE_integer('usual', 4, 'usual flag', lower_bound=0,
                          upper_bound=10000, flag_values=self.flag_values)
-    flags.DEFINE_integer('another_usual', 0, 'usual flag', lower_bound=-1,
+    gflags.DEFINE_integer('another_usual', 0, 'usual flag', lower_bound=-1,
                          upper_bound=1, flag_values=self.flag_values)
 
     self._CheckErrorMessage('positive', -4, 'a positive integer')
@@ -1904,21 +1819,21 @@ class FlagsErrorMessagesTest(unittest.TestCase):
     self._CheckErrorMessage('smaller', 5, 'integer <= 4')
 
   def testFloatErrorText(self):
-    flags.DEFINE_float('positive', 4, 'non-negative flag', lower_bound=1,
+    gflags.DEFINE_float('positive', 4, 'non-negative flag', lower_bound=1,
                        flag_values=self.flag_values)
-    flags.DEFINE_float('non_negative', 4, 'positive flag', lower_bound=0,
+    gflags.DEFINE_float('non_negative', 4, 'positive flag', lower_bound=0,
                        flag_values=self.flag_values)
-    flags.DEFINE_float('negative', -4, 'negative flag', upper_bound=-1,
+    gflags.DEFINE_float('negative', -4, 'negative flag', upper_bound=-1,
                        flag_values=self.flag_values)
-    flags.DEFINE_float('non_positive', -4, 'non-positive flag', upper_bound=0,
+    gflags.DEFINE_float('non_positive', -4, 'non-positive flag', upper_bound=0,
                        flag_values=self.flag_values)
-    flags.DEFINE_float('greater', 19, 'greater-than flag', lower_bound=4,
+    gflags.DEFINE_float('greater', 19, 'greater-than flag', lower_bound=4,
                        flag_values=self.flag_values)
-    flags.DEFINE_float('smaller', -19, 'smaller-than flag', upper_bound=4,
+    gflags.DEFINE_float('smaller', -19, 'smaller-than flag', upper_bound=4,
                        flag_values=self.flag_values)
-    flags.DEFINE_float('usual', 4, 'usual flag', lower_bound=0,
+    gflags.DEFINE_float('usual', 4, 'usual flag', lower_bound=0,
                        upper_bound=10000, flag_values=self.flag_values)
-    flags.DEFINE_float('another_usual', 0, 'usual flag', lower_bound=-1,
+    gflags.DEFINE_float('another_usual', 0, 'usual flag', lower_bound=-1,
                        upper_bound=1, flag_values=self.flag_values)
 
     self._CheckErrorMessage('positive', 0.5, 'number >= 1')
@@ -1936,7 +1851,7 @@ class FlagsErrorMessagesTest(unittest.TestCase):
     try:
       self.flag_values.__setattr__(flag_name, flag_value)
       raise AssertionError('Bounds exception not raised!')
-    except flags.IllegalFlagValue, e:
+    except gflags.IllegalFlagValue, e:
       expected = ('flag --%(name)s=%(value)s: %(value)s is not %(suffix)s' %
                   {'name': flag_name, 'value': flag_value,
                    'suffix': expected_message_suffix})
@@ -1944,7 +1859,7 @@ class FlagsErrorMessagesTest(unittest.TestCase):
 
 
 def main():
-  unittest.main()
+  googletest.main()
 
 
 if __name__ == '__main__':

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-
+#
 # Copyright (c) 2009, Google Inc.
 # All rights reserved.
 #
@@ -29,24 +29,22 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""Auxiliary module for testing flags.py.
+"""Auxiliary module for testing gflags.py.
 
 The purpose of this module is to define a few flags, and declare some
 other flags as being important.  We want to make sure the unit tests
-for flags.py involve more than one module.
+for gflags.py involve more than one module.
 """
 
-__author__ = 'Alex Salcianu'
+__author__ = 'salcianu@google.com (Alex Salcianu)'
 
-__pychecker__ = "no-local" # for unittest
+__pychecker__ = 'no-local'  # for unittest
 
-# We use the name 'flags' internally in this test, for historical reasons.
-# Don't do this yourself! :-) Just do 'import gflags; FLAGS=gflags.FLAGS; etc'
-import gflags as flags
-FLAGS = flags.FLAGS
+import gflags
+from flags_modules_for_testing import module_bar
 
-# For historical reasons we use the name module_bar instead of test_module_bar.
-import test_module_bar as module_bar
+FLAGS = gflags.FLAGS
+
 
 DECLARED_KEY_FLAGS = ['tmod_bar_x', 'tmod_bar_z', 'tmod_bar_t',
                       # Special (not user-defined) flag:
@@ -58,23 +56,23 @@ def DefineFlags(flag_values=FLAGS):
   module_bar.DefineFlags(flag_values=flag_values)
   # The 'tmod_foo_' prefix (short for 'test_module_foo') ensures that we
   # have no name clash with existing flags.
-  flags.DEFINE_boolean('tmod_foo_bool', True, 'Boolean flag from module foo.',
+  gflags.DEFINE_boolean('tmod_foo_bool', True, 'Boolean flag from module foo.',
                        flag_values=flag_values)
-  flags.DEFINE_string('tmod_foo_str', 'default', 'String flag.',
+  gflags.DEFINE_string('tmod_foo_str', 'default', 'String flag.',
                       flag_values=flag_values)
-  flags.DEFINE_integer('tmod_foo_int', 3, 'Sample int flag.',
+  gflags.DEFINE_integer('tmod_foo_int', 3, 'Sample int flag.',
                        flag_values=flag_values)
 
 
 def DeclareKeyFlags(flag_values=FLAGS):
   """Declares a few key flags."""
   for flag_name in DECLARED_KEY_FLAGS:
-    flags.DECLARE_key_flag(flag_name, flag_values=flag_values)
+    gflags.DECLARE_key_flag(flag_name, flag_values=flag_values)
 
 
 def DeclareExtraKeyFlags(flag_values=FLAGS):
   """Declares some extra key flags."""
-  flags.ADOPT_module_key_flags(module_bar, flag_values=flag_values)
+  gflags.ADOPT_module_key_flags(module_bar, flag_values=flag_values)
 
 
 def NamesOfDefinedFlags():
@@ -113,7 +111,7 @@ def RemoveFlags(flag_values=FLAGS):
 
 
 def GetModuleName():
-  """Uses flags._GetCallingModule() to return the name of this module.
+  """Uses gflags._GetCallingModule() to return the name of this module.
 
   For checking that _GetCallingModule works as expected.
 
@@ -122,7 +120,7 @@ def GetModuleName():
   """
   # Calling the protected _GetCallingModule generates a lint warning,
   # but we do not have any other alternative to test that function.
-  return flags._GetCallingModule()
+  return gflags._GetCallingModule()
 
 
 def DuplicateFlags(flagnames=None):
@@ -136,8 +134,8 @@ def DuplicateFlags(flagnames=None):
   Returns:
     A FlagValues object with one boolean flag for each name in flagnames.
   """
-  flag_values = flags.FlagValues()
+  flag_values = gflags.FlagValues()
   for name in flagnames:
-    flags.DEFINE_boolean(name, False, 'Flag named %s' % (name,),
+    gflags.DEFINE_boolean(name, False, 'Flag named %s' % (name,),
                          flag_values=flag_values)
   return flag_values

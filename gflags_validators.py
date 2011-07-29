@@ -32,7 +32,7 @@
 """Module to enforce different constraints on flags.
 
 A validator represents an invariant, enforced over a one or more flags.
-See 'FLAGS VALIDATORS' in flags.py's docstring for a usage manual.
+See 'FLAGS VALIDATORS' in gflags.py's docstring for a usage manual.
 """
 
 __author__ = 'olexiy@google.com (Olexiy Oryeshko)'
@@ -45,7 +45,7 @@ class Error(Exception):
 class Validator(object):
   """Base class for flags validators.
 
-  Users should NOT overload these classes, and use flags.Register...
+  Users should NOT overload these classes, and use gflags.Register...
   methods instead.
   """
 
@@ -72,7 +72,7 @@ class Validator(object):
 
     flags library calls this method to verify Validator's constraint.
     Args:
-      flag_values: flags.FlagValues, containing all flags
+      flag_values: gflags.FlagValues, containing all flags
     Raises:
       Error: if constraint is not satisfied.
     """
@@ -95,7 +95,7 @@ class Validator(object):
     """Given flag values, construct the input to be given to checker.
 
     Args:
-      flag_values: flags.FlagValues, containing all flags.
+      flag_values: gflags.FlagValues, containing all flags.
     Returns:
       Return type depends on the specific validator.
     """
@@ -134,7 +134,7 @@ class SimpleValidator(Validator):
     """Given flag values, construct the input to be given to checker.
 
     Args:
-      flag_values: flags.FlagValues
+      flag_values: gflags.FlagValues
     Returns:
       value of the corresponding flag.
     """
@@ -169,7 +169,7 @@ class DictionaryValidator(Validator):
     """Given flag values, construct the input to be given to checker.
 
     Args:
-      flag_values: flags.FlagValues
+      flag_values: gflags.FlagValues
     Returns:
       dictionary, with keys() being self.lag_names, and value for each key
         being the value of the corresponding flag (string, boolean, etc).

@@ -29,20 +29,20 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""Auxiliary module for testing flags.py.
+
+"""Auxiliary module for testing gflags.py.
 
 The purpose of this module is to define a few flags.  We want to make
-sure the unit tests for flags.py involve more than one module.
+sure the unit tests for gflags.py involve more than one module.
 """
 
-__author__ = 'Alex Salcianu'
+__author__ = 'salcianu@google.com (Alex Salcianu)'
 
-__pychecker__ = "no-local" # for unittest
+__pychecker__ = 'no-local'  # for unittest
 
-# We use the name 'flags' internally in this test, for historical reasons.
-# Don't do this yourself! :-) Just do 'import gflags; FLAGS=gflags.FLAGS; etc'
-import gflags as flags
-FLAGS = flags.FLAGS
+import gflags
+
+FLAGS = gflags.FLAGS
 
 
 def DefineFlags(flag_values=FLAGS):
@@ -54,25 +54,25 @@ def DefineFlags(flag_values=FLAGS):
   """
   # The 'tmod_bar_' prefix (short for 'test_module_bar') ensures there
   # is no name clash with the existing flags.
-  flags.DEFINE_boolean('tmod_bar_x', True, 'Boolean flag.',
+  gflags.DEFINE_boolean('tmod_bar_x', True, 'Boolean flag.',
                        flag_values=flag_values)
-  flags.DEFINE_string('tmod_bar_y', 'default', 'String flag.',
+  gflags.DEFINE_string('tmod_bar_y', 'default', 'String flag.',
                       flag_values=flag_values)
-  flags.DEFINE_boolean('tmod_bar_z', False,
+  gflags.DEFINE_boolean('tmod_bar_z', False,
                        'Another boolean flag from module bar.',
                        flag_values=flag_values)
-  flags.DEFINE_integer('tmod_bar_t', 4, 'Sample int flag.',
+  gflags.DEFINE_integer('tmod_bar_t', 4, 'Sample int flag.',
                        flag_values=flag_values)
-  flags.DEFINE_integer('tmod_bar_u', 5, 'Sample int flag.',
+  gflags.DEFINE_integer('tmod_bar_u', 5, 'Sample int flag.',
                        flag_values=flag_values)
-  flags.DEFINE_integer('tmod_bar_v', 6, 'Sample int flag.',
+  gflags.DEFINE_integer('tmod_bar_v', 6, 'Sample int flag.',
                        flag_values=flag_values)
 
 
 def RemoveOneFlag(flag_name, flag_values=FLAGS):
-  """Removes the definition of one flag from flags.FLAGS.
+  """Removes the definition of one flag from gflags.FLAGS.
 
-  Note: if the flag is not defined in flags.FLAGS, this function does
+  Note: if the flag is not defined in gflags.FLAGS, this function does
   not do anything (in particular, it does not raise any exception).
 
   Motivation: We use this function for cleanup *after* a test: if
@@ -108,7 +108,7 @@ def RemoveFlags(flag_values=FLAGS):
 
 
 def GetModuleName():
-  """Uses flags._GetCallingModule() to return the name of this module.
+  """Uses gflags._GetCallingModule() to return the name of this module.
 
   For checking that _GetCallingModule works as expected.
 
@@ -117,7 +117,7 @@ def GetModuleName():
   """
   # Calling the protected _GetCallingModule generates a lint warning,
   # but we do not have any other alternative to test that function.
-  return flags._GetCallingModule()
+  return gflags._GetCallingModule()
 
 
 def ExecuteCode(code, global_dict):

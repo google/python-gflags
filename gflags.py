@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-
-# Copyright (c) 2007, Google Inc.
+#
+# Copyright (c) 2002, Google Inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -58,8 +58,8 @@ value-checking and type conversion.  The converted flag values are
 available as attributes of the 'FlagValues' object.
 
 Code can access the flag through a FlagValues object, for instance
-gflags.FLAGS.myflag.  Typically, the __main__ module passes the
-command line arguments to gflags.FLAGS for parsing.
+gflags.FLAGS.myflag.  Typically, the __main__ module passes the command
+line arguments to gflags.FLAGS for parsing.
 
 At bottom, this module calls getopt(), so getopt functionality is
 supported, including short- and long-style flags, and the use of -- to
@@ -144,7 +144,7 @@ validators.
 Howto:
 If you want to enforce a constraint over one flag, use
 
-flags.RegisterValidator(flag_name,
+gflags.RegisterValidator(flag_name,
                         checker,
                         message='Flag validation failed',
                         flag_values=FLAGS)
@@ -158,15 +158,15 @@ your own checker.
 
 EXAMPLE USAGE:
 
-FLAGS = flags.FLAGS
+FLAGS = gflags.FLAGS
 
-flags.DEFINE_integer('my_version', 0, 'Version number.')
-flags.DEFINE_string('filename', None, 'Input file name', short_name='f')
+gflags.DEFINE_integer('my_version', 0, 'Version number.')
+gflags.DEFINE_string('filename', None, 'Input file name', short_name='f')
 
-flags.RegisterValidator('my_version',
+gflags.RegisterValidator('my_version',
                         lambda value: value % 2 == 0,
                         message='--my_version must be divisible by 2')
-flags.MarkFlagAsRequired('filename')
+gflags.MarkFlagAsRequired('filename')
 
 
 NOTE ON --flagfile:
@@ -202,7 +202,7 @@ Absolute path names ALWAYS work!
 
 EXAMPLE USAGE:
 
-  import gflags
+
   FLAGS = gflags.FLAGS
 
   # Flag names are globally defined!  So in general, we need to be
@@ -222,7 +222,7 @@ EXAMPLE USAGE:
     if FLAGS.debug: print 'non-flag arguments:', argv
     print 'Happy Birthday', FLAGS.name
     if FLAGS.age is not None:
-      print 'You are a %s, who is %d years old' % (FLAGS.gender, FLAGS.age)
+      print 'You are a %d year old %s' % (FLAGS.age, FLAGS.gender)
 
   if __name__ == '__main__':
     main(sys.argv)
@@ -285,7 +285,7 @@ added to the module.
 EXAMPLE USAGE 2 (WITH KEY FLAGS):
 
 Consider an application that contains the following three files (two
-auxiliary modules and a main module):
+auxiliary modules and a main module)
 
 File libfoo.py:
 
@@ -301,11 +301,11 @@ File libbar.py:
   import gflags
 
   gflags.DEFINE_string('bar_gfs_path', '/gfs/path',
-                       'Path to the GFS files for libbar.')
+                      'Path to the GFS files for libbar.')
   gflags.DEFINE_string('email_for_bar_errors', 'bar-team@google.com',
-                       'Email address for bug reports about module libbar.')
+                      'Email address for bug reports about module libbar.')
   gflags.DEFINE_boolean('bar_risky_hack', False,
-                        'Turn on an experimental and buggy optimization.')
+                       'Turn on an experimental and buggy optimization.')
 
   ... some code ...
 
@@ -329,8 +329,7 @@ File myscript.py:
 
 When myscript is invoked with the flag --helpshort, the resulted help
 message lists information about all the key flags for myscript:
---num_iterations, --num_replicas, --rpc2, and --bar_gfs_path (in
-addition to the special flags --help and --helpshort).
+--num_iterations, --num_replicas, --rpc2, and --bar_gfs_path.
 
 Of course, myscript uses all the flags declared by it (in this case,
 just --num_replicas) or by any of the modules it transitively imports
@@ -384,6 +383,8 @@ enum_value (for enum flags), list_separator (for flags that consist of
 a list of values, separated by a special token).
 
 6. We do not provide any example here: please use --helpxml instead.
+
+This module requires at least python 2.2.1 to run.
 """
 
 import cgi
@@ -395,25 +396,6 @@ import sys
 
 import gflags_validators
 
-# Are we running at least python 2.2?
-try:
-  if tuple(sys.version_info[:3]) < (2,2,0):
-    raise NotImplementedError("requires python 2.2.0 or later")
-except AttributeError:   # a very old python, that lacks sys.version_info
-  raise NotImplementedError("requires python 2.2.0 or later")
-
-# If we're not running at least python 2.2.1, define True, False, and bool.
-# Thanks, Guido, for the code.
-try:
-  True, False, bool
-except NameError:
-  False = 0
-  True = 1
-  def bool(x):
-    if x:
-      return True
-    else:
-      return False
 
 # Are we running under pychecker?
 _RUNNING_PYCHECKER = 'pychecker.python' in sys.modules
@@ -1070,8 +1052,8 @@ class FlagValues:
 
     E.g.,
 
-      flags.DEFINE_integer('foo', 1, 'Integer flag.')
-      del flags.FLAGS.foo
+      gflags.DEFINE_integer('foo', 1, 'Integer flag.')
+      del gflags.FLAGS.foo
 
     Args:
       flag_name: A string, the name of the flag to be deleted.
@@ -1545,6 +1527,7 @@ class FlagValues:
 
   def ReadFlagsFromFiles(self, argv, force_gnu=True):
     """Processes command line args, but also allow args to be read from file.
+
     Args:
       argv: A list of strings, usually sys.argv[1:], which may contain one or
         more flagfile directives of the form --flagfile="./filename".
@@ -1617,8 +1600,8 @@ class FlagValues:
     This function ignores flags whose value is None.  Each flag
     assignment is separated by a newline.
 
-    NOTE: MUST mirror the behavior of the C++ function
-    CommandlineFlagsIntoString from google3/base/commandlineflags.cc.
+    NOTE: MUST mirror the behavior of the C++ CommandlineFlagsIntoString
+    from http://code.google.com/p/google-gflags
     """
     s = ''
     for flag in self.FlagDict().values():
@@ -1631,8 +1614,8 @@ class FlagValues:
 
     Output will be in the format of a flagfile.
 
-    NOTE: MUST mirror the behavior of the C++ version of
-    AppendFlagsIntoFile from google3/base/commandlineflags.cc.
+    NOTE: MUST mirror the behavior of the C++ AppendFlagsIntoFile
+    from http://code.google.com/p/google-gflags
     """
     out_file = open(filename, 'a')
     out_file.write(self.FlagsIntoString())
@@ -1643,10 +1626,10 @@ class FlagValues:
 
     NOTE: We use element names that are consistent with those used by
     the C++ command-line flag library, from
-    google3/base/commandlineflags_reporting.cc.  We also use a few new
-    elements (e.g., <key>), but we do not interfere / overlap with
-    existing XML elements used by the C++ library.  Please maintain this
-    consistency.
+    http://code.google.com/p/google-gflags
+    We also use a few new elements (e.g., <key>), but we do not
+    interfere / overlap with existing XML elements used by the C++
+    library.  Please maintain this consistency.
 
     Args:
       outfile: File object we write to.  Default None means sys.stdout.
@@ -2023,8 +2006,8 @@ def RegisterValidator(flag_name,
     AttributeError: if flag_name is not registered as a valid flag name.
   """
   flag_values.AddValidator(gflags_validators.SimpleValidator(flag_name,
-                                                             checker,
-                                                             message))
+                                                            checker,
+                                                            message))
 
 
 def MarkFlagAsRequired(flag_name, flag_values=FLAGS):
@@ -2162,7 +2145,7 @@ def DECLARE_key_flag(flag_name, flag_values=FLAGS):
 
   Sample usage:
 
-    flags.DECLARED_key_flag('flag_1')
+    gflags.DECLARED_key_flag('flag_1')
 
   Args:
     flag_name: A string, the name of an already declared flag.
@@ -2232,7 +2215,7 @@ def DEFINE_string(name, default, help, flag_values=FLAGS, **args):
 #
 # BOOLEAN FLAGS
 #
-# and the special HELP flags.
+
 
 class BooleanParser(ArgumentParser):
   """Parser of boolean values."""
@@ -2293,8 +2276,10 @@ def DEFINE_boolean(name, default, help, flag_values=FLAGS, **args):
   """
   DEFINE_flag(BooleanFlag(name, default, help, **args), flag_values)
 
+
 # Match C++ API to unconfuse C++ people.
 DEFINE_bool = DEFINE_boolean
+
 
 class HelpFlag(BooleanFlag):
   """
@@ -2315,22 +2300,16 @@ class HelpFlag(BooleanFlag):
         print "flags:"
         print flags
       sys.exit(1)
-
-
 class HelpXMLFlag(BooleanFlag):
   """Similar to HelpFlag, but generates output in XML format."""
-
   def __init__(self):
     BooleanFlag.__init__(self, 'helpxml', False,
                          'like --help, but generates XML output',
                          allow_override=1)
-
   def Parse(self, arg):
     if arg:
       FLAGS.WriteHelpInXMLFormat(sys.stdout)
       sys.exit(1)
-
-
 class HelpshortFlag(BooleanFlag):
   """
   HelpshortFlag is a special boolean flag that prints usage
@@ -2388,6 +2367,7 @@ class NumericParser(ArgumentParser):
 #
 # FLOAT FLAGS
 #
+
 
 class FloatParser(NumericParser):
   """Parser of floating point values.

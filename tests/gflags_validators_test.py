@@ -37,29 +37,26 @@ failed validator will throw an exception, etc.
 
 __author__ = 'olexiy@google.com (Olexiy Oryeshko)'
 
-import unittest
-
-# We use the name 'flags' internally in this test, for historical reasons.
-# Don't do this yourself! :-)  Just do 'import gflags; FLAGS=gflags.FLAGS; etc'
-import gflags as flags
-import gflags_validators as flags_validators
+import gflags_googletest as googletest
+import gflags
+import gflags_validators
 
 
-class SimpleValidatorTest(unittest.TestCase):
-  """Testing flags.RegisterValidator() method."""
+class SimpleValidatorTest(googletest.TestCase):
+  """Testing gflags.RegisterValidator() method."""
 
   def setUp(self):
     super(SimpleValidatorTest, self).setUp()
-    self.flag_values = flags.FlagValues()
+    self.flag_values = gflags.FlagValues()
     self.call_args = []
 
   def testSuccess(self):
     def Checker(x):
       self.call_args.append(x)
       return True
-    flags.DEFINE_integer('test_flag', None, 'Usual integer flag',
+    gflags.DEFINE_integer('test_flag', None, 'Usual integer flag',
                          flag_values=self.flag_values)
-    flags.RegisterValidator('test_flag',
+    gflags.RegisterValidator('test_flag',
                             Checker,
                             message='Errors happen',
                             flag_values=self.flag_values)
@@ -75,9 +72,9 @@ class SimpleValidatorTest(unittest.TestCase):
     def Checker(x):
       self.call_args.append(x)
       return True
-    flags.DEFINE_integer('test_flag', None, 'Usual integer flag',
+    gflags.DEFINE_integer('test_flag', None, 'Usual integer flag',
                          flag_values=self.flag_values)
-    flags.RegisterValidator('test_flag',
+    gflags.RegisterValidator('test_flag',
                             Checker,
                             message='Errors happen',
                             flag_values=self.flag_values)
@@ -91,11 +88,11 @@ class SimpleValidatorTest(unittest.TestCase):
     def Checker(x):
       self.call_args.append(x)
       return True
-    flags.DEFINE_integer('test_flag', 1, 'Usual integer flag',
+    gflags.DEFINE_integer('test_flag', 1, 'Usual integer flag',
                          flag_values=self.flag_values)
-    flags.DEFINE_integer('other_flag', 2, 'Other integer flag',
+    gflags.DEFINE_integer('other_flag', 2, 'Other integer flag',
                          flag_values=self.flag_values)
-    flags.RegisterValidator('test_flag',
+    gflags.RegisterValidator('test_flag',
                             Checker,
                             message='Errors happen',
                             flag_values=self.flag_values)
@@ -110,9 +107,9 @@ class SimpleValidatorTest(unittest.TestCase):
     def Checker(x):
       self.call_args.append(x)
       return x == 1
-    flags.DEFINE_integer('test_flag', None, 'Usual integer flag',
+    gflags.DEFINE_integer('test_flag', None, 'Usual integer flag',
                          flag_values=self.flag_values)
-    flags.RegisterValidator('test_flag',
+    gflags.RegisterValidator('test_flag',
                             Checker,
                             message='Errors happen',
                             flag_values=self.flag_values)
@@ -121,8 +118,8 @@ class SimpleValidatorTest(unittest.TestCase):
     self.flag_values(argv)
     try:
       self.flag_values.test_flag = 2
-      raise AssertionError('flags.IllegalFlagValue expected')
-    except flags.IllegalFlagValue, e:
+      raise AssertionError('gflags.IllegalFlagValue expected')
+    except gflags.IllegalFlagValue, e:
       self.assertEquals('flag --test_flag=2: Errors happen', str(e))
     self.assertEquals([1, 2], self.call_args)
 
@@ -131,10 +128,10 @@ class SimpleValidatorTest(unittest.TestCase):
       self.call_args.append(x)
       if x == 1:
         return True
-      raise flags_validators.Error('Specific message')
-    flags.DEFINE_integer('test_flag', None, 'Usual integer flag',
+      raise gflags_validators.Error('Specific message')
+    gflags.DEFINE_integer('test_flag', None, 'Usual integer flag',
                          flag_values=self.flag_values)
-    flags.RegisterValidator('test_flag',
+    gflags.RegisterValidator('test_flag',
                             Checker,
                             message='Errors happen',
                             flag_values=self.flag_values)
@@ -143,8 +140,8 @@ class SimpleValidatorTest(unittest.TestCase):
     self.flag_values(argv)
     try:
       self.flag_values.test_flag = 2
-      raise AssertionError('flags.IllegalFlagValue expected')
-    except flags.IllegalFlagValue, e:
+      raise AssertionError('gflags.IllegalFlagValue expected')
+    except gflags.IllegalFlagValue, e:
       self.assertEquals('flag --test_flag=2: Specific message', str(e))
     self.assertEquals([1, 2], self.call_args)
 
@@ -152,9 +149,9 @@ class SimpleValidatorTest(unittest.TestCase):
     def Checker(x):
       self.call_args.append(x)
       return False
-    flags.DEFINE_integer('test_flag', None, 'Usual integer flag',
+    gflags.DEFINE_integer('test_flag', None, 'Usual integer flag',
                          flag_values=self.flag_values)
-    flags.RegisterValidator('test_flag',
+    gflags.RegisterValidator('test_flag',
                             Checker,
                             message='Errors happen',
                             flag_values=self.flag_values)
@@ -162,18 +159,18 @@ class SimpleValidatorTest(unittest.TestCase):
     argv = ('./program', '--test_flag=1')
     try:
       self.flag_values(argv)
-      raise AssertionError('flags.IllegalFlagValue expected')
-    except flags.IllegalFlagValue, e:
+      raise AssertionError('gflags.IllegalFlagValue expected')
+    except gflags.IllegalFlagValue, e:
       self.assertEquals('flag --test_flag=1: Errors happen', str(e))
     self.assertEquals([1], self.call_args)
 
   def testErrorMessageWhenCheckerRaisesExceptionOnStart(self):
     def Checker(x):
       self.call_args.append(x)
-      raise flags_validators.Error('Specific message')
-    flags.DEFINE_integer('test_flag', None, 'Usual integer flag',
+      raise gflags_validators.Error('Specific message')
+    gflags.DEFINE_integer('test_flag', None, 'Usual integer flag',
                          flag_values=self.flag_values)
-    flags.RegisterValidator('test_flag',
+    gflags.RegisterValidator('test_flag',
                             Checker,
                             message='Errors happen',
                             flag_values=self.flag_values)
@@ -182,7 +179,7 @@ class SimpleValidatorTest(unittest.TestCase):
     try:
       self.flag_values(argv)
       raise AssertionError('IllegalFlagValue expected')
-    except flags.IllegalFlagValue, e:
+    except gflags.IllegalFlagValue, e:
       self.assertEquals('flag --test_flag=1: Specific message', str(e))
     self.assertEquals([1], self.call_args)
 
@@ -205,13 +202,13 @@ class SimpleValidatorTest(unittest.TestCase):
     self.assertEquals(['Even', 'Required'], self.calls)
 
   def _DefineFlagAndValidators(self, first_validator, second_validator):
-    local_flags = flags.FlagValues()
-    flags.DEFINE_integer('test_flag', 2, 'test flag', flag_values=local_flags)
-    flags.RegisterValidator('test_flag',
+    local_flags = gflags.FlagValues()
+    gflags.DEFINE_integer('test_flag', 2, 'test flag', flag_values=local_flags)
+    gflags.RegisterValidator('test_flag',
                             first_validator,
                             message='',
                             flag_values=local_flags)
-    flags.RegisterValidator('test_flag',
+    gflags.RegisterValidator('test_flag',
                             second_validator,
                             message='',
                             flag_values=local_flags)
@@ -220,4 +217,4 @@ class SimpleValidatorTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-  unittest.main()
+  googletest.main()
