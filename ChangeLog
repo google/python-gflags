@@ -1,3 +1,13 @@
+Fri Jul 29 12:24:08 2011  Google Inc. <opensource@google.com>
+
+	* python-gflags: version 1.6
+	* Document FlagValues.UseGnuGetOpt (garymm)
+	* replace fchmod with chmod to work on python 2.4 (mshields)
+	* Fix bug in flag decl reporting for dup flags (craigcitro)
+	* Add multi_float, and tests for multi_float/int (simonf)
+	* Make flagfiles expand in place, to follow docs (dmlynch)
+	* Raise exception if --flagfile can't be read (tlim)
+
 Wed Jan 26 13:50:46 2011  Google Inc. <opensource@google.com>
 
 	* python-gflags: version 1.5.1
