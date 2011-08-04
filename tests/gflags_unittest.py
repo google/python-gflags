@@ -34,6 +34,7 @@
 __pychecker__ = "no-local" # for unittest
 
 
+import cStringIO
 import sys
 import os
 import shutil
@@ -46,6 +47,10 @@ from flags_modules_for_testing import module_baz
 FLAGS=gflags.FLAGS
 
 import gflags_googletest as googletest
+
+# TODO(csilvers): add a wrapper function around FLAGS(argv) that
+# verifies the input is a list or tuple.  This avoids bugs where we
+# make argv a string instead of a list, by mistake.
 
 class FlagsUnitTest(googletest.TestCase):
   "Flags Unit Test"
@@ -819,6 +824,59 @@ class MultiNumericalFlagsTest(googletest.TestCase):
         gflags.IllegalFlagValue,
         'flag --m_float2=def: invalid literal for float\(\): def',
         FLAGS, argv)
+
+
+class UnicodeFlagsTest(googletest.TestCase):
+  """Testing proper unicode support for flags."""
+
+  def testUnicodeDefaultAndHelpstring(self):
+    gflags.DEFINE_string("unicode_str", "\xC3\x80\xC3\xBD".decode("utf-8"),
+                        "help:\xC3\xAA".decode("utf-8"))
+    argv = ("./program",)
+    FLAGS(argv)   # should not raise any exceptions
+
+    argv = ("./program", "--unicode_str=foo")
+    FLAGS(argv)   # should not raise any exceptions
+
+  def testUnicodeInList(self):
+    gflags.DEFINE_list("unicode_list", ["abc", "\xC3\x80".decode("utf-8"),
+                                       "\xC3\xBD".decode("utf-8")],
+                      "help:\xC3\xAB".decode("utf-8"))
+    argv = ("./program",)
+    FLAGS(argv)   # should not raise any exceptions
+
+    argv = ("./program", "--unicode_list=hello,there")
+    FLAGS(argv)   # should not raise any exceptions
+
+  def testXMLOutput(self):
+    gflags.DEFINE_string("unicode1", "\xC3\x80\xC3\xBD".decode("utf-8"),
+                        "help:\xC3\xAC".decode("utf-8"))
+    gflags.DEFINE_list("unicode2", ["abc", "\xC3\x80".decode("utf-8"),
+                                   "\xC3\xBD".decode("utf-8")],
+                      "help:\xC3\xAD".decode("utf-8"))
+    gflags.DEFINE_list("non_unicode", ["abc", "def", "ghi"],
+                      "help:\xC3\xAD".decode("utf-8"))
+
+    outfile = cStringIO.StringIO()
+    FLAGS.WriteHelpInXMLFormat(outfile)
+    actual_output = outfile.getvalue()
+
+    # The xml output is large, so we just check parts of it.
+    self.assertTrue("<name>unicode1</name>\n"
+                    "    <meaning>help:&#236;</meaning>\n"
+                    "    <default>&#192;&#253;</default>\n"
+                    "    <current>&#192;&#253;</current>"
+                    in actual_output)
+    self.assertTrue("<name>unicode2</name>\n"
+                    "    <meaning>help:&#237;</meaning>\n"
+                    "    <default>abc,&#192;,&#253;</default>\n"
+                    "    <current>[\'abc\', u\'\\xc0\', u\'\\xfd\']</current>"
+                    in actual_output)
+    self.assertTrue("<name>non_unicode</name>\n"
+                    "    <meaning>help:&#237;</meaning>\n"
+                    "    <default>abc,def,ghi</default>\n"
+                    "    <current>[\'abc\', \'def\', \'ghi\']</current>"
+                    in actual_output)
 
 
 class LoadFromFlagFileTest(googletest.TestCase):

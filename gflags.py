@@ -1686,6 +1686,14 @@ class FlagValues:
 FLAGS = FlagValues()
 
 
+def _StrOrUnicode(value):
+  """Converts value to a python string or, if necessary, unicode-string."""
+  try:
+    return str(value)
+  except UnicodeEncodeError:
+    return unicode(value)
+
+
 def _MakeXMLSafe(s):
   """Escapes <, >, and & from s, and removes XML 1.0-illegal chars."""
   s = cgi.escape(s)  # Escape <, >, and &
@@ -1695,6 +1703,8 @@ def _MakeXMLSafe(s):
   # NOTE: if there are problems with current solution, one may move to
   # XML 1.1, which allows such chars, if they're entity-escaped (&#xHH;).
   s = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', '', s)
+  # Convert non-ascii characters to entities.  Note: requires python >=2.3
+  s = s.encode('ascii', 'xmlcharrefreplace')   # u'\xce\x88' -> 'u&#904;'
   return s
 
 
@@ -1708,12 +1718,12 @@ def _WriteSimpleXMLElement(outfile, name, value, indent):
       as the value of the XML element.
     indent: A string, prepended to each line of generated output.
   """
-  value_str = str(value)
+  value_str = _StrOrUnicode(value)
   if isinstance(value, bool):
     # Display boolean values as the C++ flag library does: no caps.
     value_str = value_str.lower()
-  outfile.write('%s<%s>%s</%s>\n' %
-                (indent, name, _MakeXMLSafe(value_str), name))
+  safe_value_str = _MakeXMLSafe(value_str)
+  outfile.write('%s<%s>%s</%s>\n' % (indent, name, safe_value_str, name))
 
 
 class Flag:
@@ -1779,7 +1789,7 @@ class Flag:
         return repr('true')
       else:
         return repr('false')
-    return repr(str(value))
+    return repr(_StrOrUnicode(value))
 
   def Parse(self, argument):
     try:
@@ -1965,7 +1975,7 @@ class ArgumentSerializer:
   """Base class for generating string representations of a flag value."""
 
   def Serialize(self, value):
-    return str(value)
+    return _StrOrUnicode(value)
 
 
 class ListSerializer(ArgumentSerializer):
@@ -1974,7 +1984,7 @@ class ListSerializer(ArgumentSerializer):
     self.list_sep = list_sep
 
   def Serialize(self, value):
-    return self.list_sep.join([str(x) for x in value])
+    return self.list_sep.join([_StrOrUnicode(x) for x in value])
 
 
 # Flags validators
