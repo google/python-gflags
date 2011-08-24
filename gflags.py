@@ -388,11 +388,14 @@ This module requires at least python 2.2.1 to run.
 """
 
 import cgi
+import fcntl
 import getopt
 import os
 import re
 import string
+import struct
 import sys
+import termios
 
 import gflags_validators
 
@@ -514,7 +517,13 @@ _help_width = 80  # width of help output
 
 def GetHelpWidth():
   """Returns: an integer, the width of help lines that is used in TextWrap."""
-  return _help_width
+  if not sys.stdout.isatty():
+    return _help_width
+  try:
+    data = fcntl.ioctl(sys.stdout, termios.TIOCGWINSZ, '1234')
+    return struct.unpack('hh', data)[1]
+  except (IOError, struct.error):
+    return _help_width
 
 
 def CutCommonSpacePrefix(text):
