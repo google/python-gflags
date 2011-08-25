@@ -395,7 +395,11 @@ import re
 import string
 import struct
 import sys
-import termios
+
+try:
+  import termios
+except ImportError:
+  termios = None
 
 import gflags_validators
 
@@ -517,7 +521,7 @@ _help_width = 80  # width of help output
 
 def GetHelpWidth():
   """Returns: an integer, the width of help lines that is used in TextWrap."""
-  if not sys.stdout.isatty():
+  if not termios or not sys.stdout.isatty():
     return _help_width
   try:
     data = fcntl.ioctl(sys.stdout, termios.TIOCGWINSZ, '1234')
