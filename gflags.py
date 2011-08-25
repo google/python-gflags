@@ -388,20 +388,25 @@ This module requires at least python 2.2.1 to run.
 """
 
 import cgi
-import fcntl
 import getopt
 import os
 import re
 import string
 import struct
 import sys
-
+# pylint: disable-msg=C6204
 try:
+  import fcntl
+except ImportError:
+  fcntl = None
+try:
+  # Importing termios will fail on non-unix platforms.
   import termios
 except ImportError:
   termios = None
 
 import gflags_validators
+# pylint: enable-msg=C6204
 
 
 # Are we running under pychecker?
@@ -521,7 +526,7 @@ _help_width = 80  # width of help output
 
 def GetHelpWidth():
   """Returns: an integer, the width of help lines that is used in TextWrap."""
-  if not termios or not sys.stdout.isatty():
+  if (not sys.stdout.isatty()) or (termios is None) or (fcntl is None):
     return _help_width
   try:
     data = fcntl.ioctl(sys.stdout, termios.TIOCGWINSZ, '1234')
