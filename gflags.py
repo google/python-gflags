@@ -530,8 +530,15 @@ def GetHelpWidth():
     return _help_width
   try:
     data = fcntl.ioctl(sys.stdout, termios.TIOCGWINSZ, '1234')
-    return struct.unpack('hh', data)[1]
-  except (IOError, struct.error):
+    columns = struct.unpack('hh', data)[1]
+    # Emacs mode returns 0.
+    # Here we assume that any value below 40 is unreasonable
+    if columns >= 40:
+      return columns
+    # Returning an int as default is fine, int(int) just return the int.
+    return int(os.getenv('COLUMNS', _help_width))
+
+  except (TypeError, IOError, struct.error):
     return _help_width
 
 
