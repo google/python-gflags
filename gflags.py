@@ -550,8 +550,8 @@ def CutCommonSpacePrefix(text):
   for. That means the first line will stay untouched. This is especially
   useful to turn doc strings into help texts. This is because some
   people prefer to have the doc comment start already after the
-  apostrophy and then align the following lines while others have the
-  apostrophies on a seperately line.
+  apostrophe and then align the following lines while others have the
+  apostrophes on a separate line.
 
   The function also drops trailing empty lines and ignores empty lines
   following the initial content line while calculating the initial
@@ -622,7 +622,7 @@ def TextWrap(text, length=None, indent='', firstline_indent=None, tabs='    '):
   else:
     line = firstline_indent
     if len(firstline_indent) >= length:
-      raise FlagsError('First iline indent must be shorter than length')
+      raise FlagsError('First line indent must be shorter than length')
 
   # If the callee does not care about tabs we simply convert them to
   # spaces If callee wanted tabs to be single space then we do that
