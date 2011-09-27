@@ -982,12 +982,12 @@ class FlagValues:
       raise FlagsError("Flag name cannot be empty")
     # If running under pychecker, duplicate keys are likely to be
     # defined.  Disable check for duplicate keys when pycheck'ing.
-    if (fl.has_key(name) and not flag.allow_override and
+    if (name in fl and not flag.allow_override and
         not fl[name].allow_override and not _RUNNING_PYCHECKER):
       raise DuplicateFlagError(name, self)
     short_name = flag.short_name
     if short_name is not None:
-      if (fl.has_key(short_name) and not flag.allow_override and
+      if (short_name in fl and not flag.allow_override and
           not fl[short_name].allow_override and not _RUNNING_PYCHECKER):
         raise DuplicateFlagError(short_name, self)
       fl[short_name] = flag
@@ -1002,7 +1002,7 @@ class FlagValues:
   def __getattr__(self, name):
     """Retrieves the 'value' attribute of the flag --name."""
     fl = self.FlagDict()
-    if not fl.has_key(name):
+    if name not in fl:
       raise AttributeError(name)
     return fl[name].value
 
@@ -1118,7 +1118,7 @@ class FlagValues:
   def SetDefault(self, name, value):
     """Changes the default value of the named flag object."""
     fl = self.FlagDict()
-    if not fl.has_key(name):
+    if name not in fl:
       raise AttributeError(name)
     fl[name].SetDefault(value)
     self._AssertValidators(fl[name].validators)
@@ -1130,7 +1130,7 @@ class FlagValues:
   has_key = __contains__  # a synonym for __contains__()
 
   def __iter__(self):
-    return self.FlagDict().iterkeys()
+    return iter(self.FlagDict())
 
   def __call__(self, argv):
     """Parses flags from argv; stores parsed flags into this FlagValues object.
@@ -1253,7 +1253,7 @@ class FlagValues:
         # short option
         name = name[1:]
         short_option = 1
-      if fl.has_key(name):
+      if name in fl:
         flag = fl[name]
         if flag.boolean and short_option: arg = 1
         flag.Parse(arg)
@@ -1286,7 +1286,7 @@ class FlagValues:
 
   def RegisteredFlags(self):
     """Returns: a list of the names and short names of all registered flags."""
-    return self.FlagDict().keys()
+    return list(self.FlagDict())
 
   def FlagValuesDict(self):
     """Returns: a dictionary that maps flag names to flag values."""
@@ -1309,8 +1309,7 @@ class FlagValues:
     flags_by_module = self.FlagsByModuleDict()
     if flags_by_module:
 
-      modules = flags_by_module.keys()
-      modules.sort()
+      modules = sorted(flags_by_module)
 
       # Print the help for the main module first, if possible.
       main_module = _GetMainModule()
@@ -1394,7 +1393,7 @@ class FlagValues:
         # a different flag is using this name now
         continue
       # only print help once
-      if flagset.has_key(flag): continue
+      if flag in flagset: continue
       flagset[flag] = 1
       flaghelp = ""
       if flag.short_name: flaghelp += "-%s," % flag.short_name
@@ -1541,8 +1540,8 @@ class FlagValues:
                                                    parsed_file_list)
           flag_line_list.extend(included_flags)
         else:  # Case of hitting a circularly included file.
-          print >>sys.stderr, ('Warning: Hit circular flagfile dependency: %s'
-                               % sub_filename)
+          sys.stderr.write('Warning: Hit circular flagfile dependency: %s' %
+                           (sub_filename,))
       else:
         # Any line that's not a comment or a nested flagfile should get
         # copied into 2nd position.  This leaves earlier arguements
@@ -1803,6 +1802,17 @@ class Flag:
     self.validators = []
 
     self.SetDefault(default)
+
+  def __hash__(self):
+    return hash(id(self))
+
+  def __eq__(self, other):
+    return self is other
+
+  def __lt__(self, other):
+    if isinstance(other, Flag):
+      return id(self) < id(other)
+    return NotImplemented
 
   def __GetParsedValueAsString(self, value):
     if value is None:
@@ -2492,17 +2502,9 @@ class IntegerParser(NumericParser):
       base = 10
       if len(argument) > 2 and argument[0] == "0" and argument[1] == "x":
         base = 16
-      try:
-        return int(argument, base)
-      # ValueError is thrown when argument is a string, and overflows an int.
-      except ValueError:
-        return long(argument, base)
+      return int(argument, base)
     else:
-      try:
-        return int(argument)
-      # OverflowError is thrown when argument is numeric, and overflows an int.
-      except OverflowError:
-        return long(argument)
+      return int(argument)
 
   def Type(self):
     return 'int'

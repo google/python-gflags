@@ -75,7 +75,7 @@ class FlagsUnitTest(googletest.TestCase):
     gflags.DEFINE_boolean("quack", 0, "superstring of 'q'")
     gflags.DEFINE_boolean("noexec", 1, "boolean flag with no as prefix")
     gflags.DEFINE_integer("x", 3, "how eXtreme to be")
-    gflags.DEFINE_integer("l", 0x7fffffff00000000L, "how long to be")
+    gflags.DEFINE_integer("l", 0x7fffffff00000000, "how long to be")
     gflags.DEFINE_list('letters', 'a,b,c', "a list of letters")
     gflags.DEFINE_list('numbers', [1, 2, 3], "a list of numbers")
     gflags.DEFINE_enum("kwery", None, ['who', 'what', 'why', 'where', 'when'],
@@ -92,8 +92,8 @@ class FlagsUnitTest(googletest.TestCase):
     assert FLAGS.debug == 0, "boolean default values not set:" + FLAGS.debug
     assert FLAGS.q == 1, "boolean default values not set:" + FLAGS.q
     assert FLAGS.x == 3, "integer default values not set:" + FLAGS.x
-    assert FLAGS.l == 0x7fffffff00000000L, ("integer default values not set:"
-                                            + FLAGS.l)
+    assert FLAGS.l == 0x7fffffff00000000, ("integer default values not set:"
+                                           + FLAGS.l)
     assert FLAGS.letters == ['a', 'b', 'c'], ("list default values not set:"
                                               + FLAGS.letters)
     assert FLAGS.numbers == [1, 2, 3], ("list default values not set:"
@@ -109,7 +109,7 @@ class FlagsUnitTest(googletest.TestCase):
     assert flag_values['q'] == 1
     assert flag_values['quack'] == 0
     assert flag_values['x'] == 3
-    assert flag_values['l'] == 0x7fffffff00000000L
+    assert flag_values['l'] == 0x7fffffff00000000
     assert flag_values['letters'] == ['a', 'b', 'c']
     assert flag_values['numbers'] == [1, 2, 3]
     assert flag_values['kwery'] is None
@@ -489,7 +489,7 @@ class FlagsUnitTest(googletest.TestCase):
     try:
       gflags.DEFINE_boolean("run", 0, "runhelp", short_name='q')
       raise AssertionError("duplicate flag detection failed")
-    except gflags.DuplicateFlag, e:
+    except gflags.DuplicateFlag:
       pass
 
     # Duplicate short flag detection
@@ -536,7 +536,7 @@ class FlagsUnitTest(googletest.TestCase):
                            allow_override=1)
       flag = FLAGS.FlagDict()['dup1']
       self.assertEqual(flag.default, 1)
-    except gflags.DuplicateFlag, e:
+    except gflags.DuplicateFlag:
       raise AssertionError("allow_override did not permit a flag duplication")
 
     # Make sure allow_override works
@@ -550,7 +550,7 @@ class FlagsUnitTest(googletest.TestCase):
                            allow_override=0)
       flag = FLAGS.FlagDict()['dup2']
       self.assertEqual(flag.default, 1)
-    except gflags.DuplicateFlag, e:
+    except gflags.DuplicateFlag:
       raise AssertionError("allow_override did not permit a flag duplication")
 
     # Make sure allow_override doesn't work with None default
@@ -563,7 +563,7 @@ class FlagsUnitTest(googletest.TestCase):
       gflags.DEFINE_boolean("dup3", None, "runhelp d32", short_name='u3',
                            allow_override=1)
       raise AssertionError('Cannot override a flag with a default of None')
-    except gflags.DuplicateFlagCannotPropagateNoneToSwig, e:
+    except gflags.DuplicateFlagCannotPropagateNoneToSwig:
       pass
 
     # Make sure that when we override, the help string gets updated correctly
@@ -619,7 +619,7 @@ class FlagsUnitTest(googletest.TestCase):
     try:
       FLAGS.AppendFlagValues(new_flags)
       raise AssertionError("ignore_copy was not set but caused no exception")
-    except gflags.DuplicateFlag, e:
+    except gflags.DuplicateFlag:
       pass
 
     # Integer out of bounds
@@ -800,7 +800,7 @@ class MultiNumericalFlagsTest(googletest.TestCase):
     # Test non-parseable defaults.
     self.assertRaisesWithRegexpMatch(
         gflags.IllegalFlagValue,
-        'flag --m_int2=abc: invalid literal for long\(\) with base 10: \'abc\'',
+        'flag --m_int2=abc: invalid literal for int\(\) with base 10: \'abc\'',
         gflags.DEFINE_multi_int, 'm_int2', ['abc'], 'desc')
 
     self.assertRaisesWithRegexpMatch(
@@ -814,7 +814,7 @@ class MultiNumericalFlagsTest(googletest.TestCase):
     argv = ('./program', '--m_int2=def')
     self.assertRaisesWithRegexpMatch(
         gflags.IllegalFlagValue,
-        'flag --m_int2=def: invalid literal for long\(\) with base 10: \'def\'',
+        'flag --m_int2=def: invalid literal for int\(\) with base 10: \'def\'',
         FLAGS, argv)
 
     gflags.DEFINE_multi_float('m_float2', 2.2,
@@ -1365,7 +1365,7 @@ class FlagsParsingTest(googletest.TestCase):
               '--undefok=nosuchflagg', 'extra')
       self.flag_values(argv)
       raise AssertionError("Unknown flag exception not raised")
-    except gflags.UnrecognizedFlag:
+    except gflags.UnrecognizedFlag, e:
       assert e.flagname == 'nosuchflag'
 
     # Allow unknown short flag -w if specified with undefok
@@ -1783,18 +1783,18 @@ class GetCallingModuleTest(googletest.TestCase):
     # code and execute it.
     code = ("import gflags\n"
             "module_name = gflags._GetCallingModule()")
-    exec code
+    exec(code)
 
     # Next two exec statements executes code with a global environment
     # that is different from the global environment of any imported
     # module.
-    exec code in {}
+    exec(code, {})
     # vars(self) returns a dictionary corresponding to the symbol
     # table of the self object.  dict(...) makes a distinct copy of
     # this dictionary, such that any new symbol definition by the
     # exec-ed code (e.g., import flags, module_name = ...) does not
     # affect the symbol table of self.
-    exec code in dict(vars(self))
+    exec(code, dict(vars(self)))
 
     # Next test is actually more involved: it checks not only that
     # _GetCallingModule does not crash inside exec code, it also checks
@@ -1803,7 +1803,7 @@ class GetCallingModuleTest(googletest.TestCase):
     # check it twice: first time by executing exec from the main
     # module, second time by executing it from module_bar.
     global_dict = {}
-    exec code in global_dict
+    exec(code, global_dict)
     self.assertEqual(global_dict['module_name'],
                      sys.argv[0])
 
