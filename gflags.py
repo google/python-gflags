@@ -1540,7 +1540,7 @@ class FlagValues:
                                                    parsed_file_list)
           flag_line_list.extend(included_flags)
         else:  # Case of hitting a circularly included file.
-          sys.stderr.write('Warning: Hit circular flagfile dependency: %s' %
+          sys.stderr.write('Warning: Hit circular flagfile dependency: %s\n' %
                            (sub_filename,))
       else:
         # Any line that's not a comment or a nested flagfile should get
