@@ -508,7 +508,7 @@ class UnrecognizedFlag(FlagsError):
 # An UnrecognizedFlagError conveys more information than an UnrecognizedFlag.
 # Since there are external modules that create DuplicateFlags, the interface to
 # DuplicateFlag shouldn't change.  The flagvalue will be assigned the full value
-# of the flag and its argument, if any, allowing handling of unrecognzed flags
+# of the flag and its argument, if any, allowing handling of unrecognized flags
 # in an exception handler.
 # If flagvalue is the empty string, then this exception is an due to a
 # reference to a flag that was not already defined.
@@ -573,7 +573,7 @@ def CutCommonSpacePrefix(text):
       text_first_line = []
     else:
       text_first_line = [text_lines.pop(0)]
-    # Calculate length of common leading whitesppace (only over content lines)
+    # Calculate length of common leading whitespace (only over content lines)
     common_prefix = os.path.commonprefix([line for line in text_lines if line])
     space_prefix_len = len(common_prefix) - len(common_prefix.lstrip())
     # If we have a common space prefix, drop it from all lines
@@ -588,7 +588,7 @@ def CutCommonSpacePrefix(text):
 def TextWrap(text, length=None, indent='', firstline_indent=None, tabs='    '):
   """Wraps a given text to a maximum line length and returns it.
 
-  We turn lines that only contain whitespaces into empty lines.  We keep
+  We turn lines that only contain whitespace into empty lines.  We keep
   new lines and tabs (e.g., we do not treat tabs as spaces).
 
   Args:
@@ -676,7 +676,7 @@ def TextWrap(text, length=None, indent='', firstline_indent=None, tabs='    '):
           line += ' '
       # Add word and shorten it up to allowed line length. Restart next
       # line with indent and repeat, or add a space if we're done (word
-      # finished) This deals with words that caanot fit on one line
+      # finished) This deals with words that cannot fit on one line
       # (e.g. indent + word longer than allowed line length).
       while len(line) + len(word) >= length:
         line += word
@@ -688,7 +688,7 @@ def TextWrap(text, length=None, indent='', firstline_indent=None, tabs='    '):
         line += word + ' '
     # End of input line. If we have content we finish the line. If the
     # current line is just the indent but we had content in during this
-    # original line then we need to add an emoty line.
+    # original line then we need to add an empty line.
     if (result and line != indent) or (not result and line != firstline_indent):
       result.append(line.rstrip())
     elif len(result) == old_result_len:
@@ -1096,7 +1096,7 @@ class FlagValues:
     if not self._FlagIsRegistered(flag_obj):
       # If the Flag object indicated by flag_name is no longer
       # registered (please see the docstring of _FlagIsRegistered), then
-      # we delete the occurences of the flag object in all our internal
+      # we delete the occurrences of the flag object in all our internal
       # dictionaries.
       self.__RemoveFlagFromDictByModule(self.FlagsByModuleDict(), flag_obj)
       self.__RemoveFlagFromDictByModule(self.KeyFlagsByModuleDict(), flag_obj)
@@ -1110,7 +1110,7 @@ class FlagValues:
       flag_obj: A flag object.
     """
     for unused_module, flags_in_module in flags_by_module_dict.iteritems():
-      # while (as opposed to if) takes care of multiple occurences of a
+      # while (as opposed to if) takes care of multiple occurrences of a
       # flag in the list for the same module.
       while flag_obj in flags_in_module:
         flags_in_module.remove(flag_obj)
@@ -1178,7 +1178,7 @@ class FlagValues:
       prefix = shortest_matches[name]
       no_prefix = shortest_matches[no_name]
 
-      # Replace all occurences of this boolean with extended forms
+      # Replace all occurrences of this boolean with extended forms
       for arg_idx in range(1, len(argv)):
         arg = argv[arg_idx]
         if arg.find('=') >= 0: continue
@@ -1215,7 +1215,7 @@ class FlagValues:
         break
       except getopt.GetoptError, e:
         if not e.opt or e.opt in fl:
-          # Not an unrecognized option, reraise the exception as a FlagsError
+          # Not an unrecognized option, re-raise the exception as a FlagsError
           raise FlagsError(e)
         # Remove offender from args and try again
         for arg_index in range(len(args)):
@@ -1544,7 +1544,7 @@ class FlagValues:
                            (sub_filename,))
       else:
         # Any line that's not a comment or a nested flagfile should get
-        # copied into 2nd position.  This leaves earlier arguements
+        # copied into 2nd position.  This leaves earlier arguments
         # further back in the list, thus giving them higher priority.
         flag_line_list.append(line.strip())
     return flag_line_list
