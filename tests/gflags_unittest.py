@@ -566,6 +566,15 @@ class FlagsUnitTest(googletest.TestCase):
     except gflags.DuplicateFlagCannotPropagateNoneToSwig:
       pass
 
+    # Make sure that re-importing a module does not cause a DuplicateFlagError
+    # to be raised.
+    try:
+      sys.modules.pop(
+          "flags_modules_for_testing.module_baz")
+      import flags_modules_for_testing.module_baz
+    except gflags.DuplicateFlagError:
+      raise AssertionError("Module reimport caused flag duplication error")
+
     # Make sure that when we override, the help string gets updated correctly
     gflags.DEFINE_boolean("dup3", 0, "runhelp d31", short_name='u',
                          allow_override=1)
@@ -1837,6 +1846,22 @@ class GetCallingModuleTest(googletest.TestCase):
           'flags_modules_for_testing.module_foo')
     finally:
       sys.modules = orig_sys_modules
+
+
+class FindModuleTest(googletest.TestCase):
+  """Testing methods that find a module that defines a given flag."""
+
+  def testFindModuleDefiningFlag(self):
+    self.assertEqual('default', FLAGS.FindModuleDefiningFlag(
+        '__NON_EXISTENT_FLAG__', 'default'))
+    self.assertEqual(
+        module_baz.__name__, FLAGS.FindModuleDefiningFlag('tmod_baz_x'))
+
+  def testFindModuleIdDefiningFlag(self):
+    self.assertEqual('default', FLAGS.FindModuleIdDefiningFlag(
+        '__NON_EXISTENT_FLAG__', 'default'))
+    self.assertEqual(
+        id(module_baz), FLAGS.FindModuleIdDefiningFlag('tmod_baz_x'))
 
 
 class FlagsErrorMessagesTest(googletest.TestCase):

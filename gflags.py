@@ -413,8 +413,8 @@ import gflags_validators
 _RUNNING_PYCHECKER = 'pychecker.python' in sys.modules
 
 
-def _GetCallingModule():
-  """Returns the name of the module that's calling into this module.
+def _GetCallingModuleObjectAndName():
+  """Returns the module that's calling into this module.
 
   We generally use this function to get the name of the module calling a
   DEFINE_foo... function.
@@ -423,10 +423,15 @@ def _GetCallingModule():
   for depth in range(1, sys.getrecursionlimit()):
     if not sys._getframe(depth).f_globals is globals():
       globals_for_frame = sys._getframe(depth).f_globals
-      module_name = _GetModuleObjectAndName(globals_for_frame)[1]
+      module, module_name = _GetModuleObjectAndName(globals_for_frame)
       if module_name is not None:
-        return module_name
+        return module, module_name
   raise AssertionError("No module was found")
+
+
+def _GetCallingModule():
+  """Returns the name of the module that's calling into this module."""
+  return _GetCallingModuleObjectAndName()[1]
 
 
 def _GetThisModuleObjectAndName():
@@ -751,7 +756,7 @@ def _GetModuleObjectAndName(globals_dict):
 
 def _GetMainModule():
   """Returns: string, name of the module from which execution started."""
-  # First, try to use the same logic used by _GetCallingModule(),
+  # First, try to use the same logic used by _GetCallingModuleObjectAndName(),
   # i.e., call _GetModuleObjectAndName().  For that we first need to
   # find the dictionary that the main module uses to store the
   # globals.
@@ -766,7 +771,7 @@ def _GetMainModule():
   # The above strategy fails in some cases (e.g., tools that compute
   # code coverage by redefining, among other things, the main module).
   # If so, just use sys.argv[0].  We can probably always do this, but
-  # it's safest to try to use the same logic as _GetCallingModule().
+  # it's safest to try to use the same logic as _GetCallingModuleObjectAndName()
   if main_module_name is None:
     main_module_name = sys.argv[0]
   return main_module_name
@@ -814,6 +819,9 @@ class FlagValues:
     # Dictionary: module name (string) -> list of Flag objects that are defined
     # by that module.
     self.__dict__['__flags_by_module'] = {}
+    # Dictionary: module id (int) -> list of Flag objects that are defined by
+    # that module.
+    self.__dict__['__flags_by_module_id'] = {}
     # Dictionary: module name (string) -> list of Flag objects that are
     # key for that module.
     self.__dict__['__key_flags_by_module'] = {}
@@ -847,6 +855,15 @@ class FlagValues:
     """
     return self.__dict__['__flags_by_module']
 
+  def FlagsByModuleIdDict(self):
+    """Returns the dictionary of module_id -> list of defined flags.
+
+    Returns:
+      A dictionary.  Its keys are module IDs (ints).  Its values
+      are lists of Flag objects.
+    """
+    return self.__dict__['__flags_by_module_id']
+
   def KeyFlagsByModuleDict(self):
     """Returns the dictionary of module_name -> list of key flags.
 
@@ -868,6 +885,16 @@ class FlagValues:
     """
     flags_by_module = self.FlagsByModuleDict()
     flags_by_module.setdefault(module_name, []).append(flag)
+
+  def _RegisterFlagByModuleId(self, module_id, flag):
+    """Records the module that defines a specific flag.
+
+    Args:
+      module_id: An int, the ID of the Python module.
+      flag: A Flag object, a flag that is key to the module.
+    """
+    flags_by_module_id = self.FlagsByModuleIdDict()
+    flags_by_module_id.setdefault(module_id, []).append(flag)
 
   def _RegisterKeyFlagForModule(self, module_name, flag):
     """Specifies that a flag is a key flag for a module.
@@ -943,6 +970,25 @@ class FlagValues:
           return module
     return default
 
+  def FindModuleIdDefiningFlag(self, flagname, default=None):
+    """Return the ID of the module defining this flag, or default.
+
+    Args:
+      flagname: Name of the flag to lookup.
+      default: Value to return if flagname is not defined. Defaults
+          to None.
+
+    Returns:
+      The ID of the module which registered the flag with this name.
+      If no such module exists (i.e. no flag with this name exists),
+      we return default.
+    """
+    for module_id, flags in self.FlagsByModuleIdDict().iteritems():
+      for flag in flags:
+        if flag.name == flagname or flag.short_name == flagname:
+          return module_id
+    return default
+
   def AppendFlagValues(self, flag_values):
     """Appends flags registered in another FlagValues instance.
 
@@ -984,6 +1030,13 @@ class FlagValues:
     # defined.  Disable check for duplicate keys when pycheck'ing.
     if (name in fl and not flag.allow_override and
         not fl[name].allow_override and not _RUNNING_PYCHECKER):
+      module, module_name = _GetCallingModuleObjectAndName()
+      if (self.FindModuleDefiningFlag(name) == module_name and
+          id(module) != self.FindModuleIdDefiningFlag(name)):
+        # If the flag has already been defined by a module with the same name,
+        # but a different ID, we can stop here because it indicates that the
+        # module is simply being imported a subsequent time.
+        return
       raise DuplicateFlagError(name, self)
     short_name = flag.short_name
     if short_name is not None:
@@ -1099,6 +1152,7 @@ class FlagValues:
       # we delete the occurrences of the flag object in all our internal
       # dictionaries.
       self.__RemoveFlagFromDictByModule(self.FlagsByModuleDict(), flag_obj)
+      self.__RemoveFlagFromDictByModule(self.FlagsByModuleIdDict(), flag_obj)
       self.__RemoveFlagFromDictByModule(self.KeyFlagsByModuleDict(), flag_obj)
 
   def __RemoveFlagFromDictByModule(self, flags_by_module_dict, flag_obj):
@@ -2142,7 +2196,9 @@ def DEFINE_flag(flag, flag_values=FLAGS):
     # FLAGS test here) and redefine flags with the same name (e.g.,
     # debug).  To avoid breaking their code, we perform the
     # registration only if flag_values is a real FlagValues object.
-    flag_values._RegisterFlagByModule(_GetCallingModule(), flag)
+    module, module_name = _GetCallingModuleObjectAndName()
+    flag_values._RegisterFlagByModule(module_name, flag)
+    flag_values._RegisterFlagByModuleId(id(module), flag)
 
 
 def _InternalDeclareKeyFlags(flag_names,
@@ -2235,8 +2291,8 @@ def ADOPT_module_key_flags(module, flag_values=FLAGS):
   # If module is this flag module, take _SPECIAL_FLAGS into account.
   if module == _GetThisModuleObjectAndName()[0]:
     _InternalDeclareKeyFlags(
-        # As we associate flags with _GetCallingModule(), the special
-        # flags defined in this module are incorrectly registered with
+        # As we associate flags with _GetCallingModuleObjectAndName(), the
+        # special flags defined in this module are incorrectly registered with
         # a different module.  So, we can't use _GetKeyFlagsForModule.
         # Instead, we take all flags from _SPECIAL_FLAGS (a private
         # FlagValues, where no other module should register flags).
