@@ -32,11 +32,11 @@
 from setuptools import setup
 
 setup(name='python-gflags',
-      version='1.7',
+      version='1.8',
       description='Google Commandline Flags Module',
       license='BSD',
-      author='Google Inc.',
-      author_email='opensource@google.com',
+      author='Google Inc. and others',
+      author_email='google-gflags@googlegroups.com',
       url='http://code.google.com/p/python-gflags',
       py_modules=["gflags", "gflags_validators"],
       data_files=[("bin", ["gflags2man.py"])],

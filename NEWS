@@ -1,4 +1,18 @@
-== 20 December 2011 ==
+== 18 January 2012 ==
+
+I've just released python-gflags 1.8.  This fixes a bug, allowing
+modules defining flags to be re-imported without raising duplicate
+flag errors.
+
+Administrative note: In the coming weeks, I'll be stepping down as
+maintainer for the python-gflags project, and as part of that Google
+is relinquishing ownership of the project; it will now be entirely
+community run.  The remaining
+[http://python-gflags.googlecode.com/svn/tags/python-gflags-1.8/ChangeLog changes]
+in this release reflect that shift.
+
+
+=== 20 December 2011 ===
 
 I've just released python-gflags 1.7.  The major change here is
 improved unicode support, in both flag default values and
