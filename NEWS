@@ -1,5 +1,10 @@
 == 18 January 2012 ==
 
+[Prependum:] I just realized I should have named the new version 2.0,
+to reflect the new ownership and status as a community run project.
+Not too late, I guess.  I've just released python-gflags 2.0, which is
+identical to python-gflags 1.8 except for the version number.
+
 I've just released python-gflags 1.8.  This fixes a bug, allowing
 modules defining flags to be re-imported without raising duplicate
 flag errors.
