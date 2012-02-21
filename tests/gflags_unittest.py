@@ -814,7 +814,7 @@ class MultiNumericalFlagsTest(googletest.TestCase):
 
     self.assertRaisesWithRegexpMatch(
         gflags.IllegalFlagValue,
-        'flag --m_float2=abc: invalid literal for float\(\): abc',
+        'flag --m_float2=abc: (invalid literal for float\(\)||could not convert string to float): abc',
         gflags.DEFINE_multi_float, 'm_float2', ['abc'], 'desc')
 
     # Test non-parseable command line values.
@@ -831,7 +831,7 @@ class MultiNumericalFlagsTest(googletest.TestCase):
     argv = ('./program', '--m_float2=def')
     self.assertRaisesWithRegexpMatch(
         gflags.IllegalFlagValue,
-        'flag --m_float2=def: invalid literal for float\(\): def',
+        'flag --m_float2=def: (invalid literal for float\(\)||could not convert string to float): def',
         FLAGS, argv)
 
 
