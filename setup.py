@@ -37,8 +37,8 @@ setup(name='python-gflags',
       license='BSD',
       author='Google Inc. and others',
       author_email='google-gflags@googlegroups.com',
-      url='http://code.google.com/p/python-gflags',
+      url='https://github.com/google/python-gflags',
       py_modules=["gflags", "gflags_validators"],
       data_files=[("bin", ["gflags2man.py"])],
       include_package_data=True,
-      )
+)
