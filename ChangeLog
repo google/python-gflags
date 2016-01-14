@@ -1,3 +1,11 @@
+Tue Jan 12 16:39:00 2016  Google Inc. <google-gflags@googlegroups.com>
+
+  * python-gflags: version 3.0.0.
+  * A lot of potentially backwards incompatible changes since 2.0.
+  * This version is NOT recommended to use in production. Some of the files and
+    documentation has been lost during export; this will be fixed in next
+    versions.
+
 Wed Jan 18 13:57:39 2012  Google Inc. <google-gflags@googlegroups.com>
 
 	* python-gflags: version 2.0

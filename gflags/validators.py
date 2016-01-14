@@ -1,7 +1,5 @@
 #!/usr/bin/env python
-
-# Copyright (c) 2010, Google Inc.
-# All rights reserved.
+# Copyright 2014 Google Inc. All Rights Reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -32,7 +30,7 @@
 """Module to enforce different constraints on flags.
 
 A validator represents an invariant, enforced over a one or more flags.
-See 'FLAGS VALIDATORS' in gflags.py's docstring for a usage manual.
+See 'FLAGS VALIDATORS' in the flags module's docstring for a usage manual.
 """
 
 __author__ = 'olexiy@google.com (Olexiy Oryeshko)'
@@ -107,7 +105,9 @@ class SimpleValidator(Validator):
 
   Validates that a single flag passes its checker function. The checker function
   takes the flag value and returns True (if value looks fine) or, if flag value
-  is not valid, either returns False or raises an Exception."""
+  is not valid, either returns False or raises an Exception.
+  """
+
   def __init__(self, flag_name, checker, message):
     """Constructor.
 
@@ -148,6 +148,7 @@ class DictionaryValidator(Validator):
   function takes flag values and returns True (if values look fine) or,
   if values are not valid, either returns False or raises an Exception.
   """
+
   def __init__(self, flag_names, checker, message):
     """Constructor.
 
@@ -185,3 +186,28 @@ class DictionaryValidator(Validator):
 
   def GetFlagsNames(self):
     return self.flag_names
+
+
+class MutualExclusionValidator(DictionaryValidator):
+  """Validates that only one flag among a group is set.
+
+  Validates that of the group of flags passed to the checker function, only one
+  of these flags is not None.
+  """
+
+  def __init__(self, flag_names, required=False):
+    """Constructor.
+
+    Arguments:
+      flag_names: (iter of strings), names of flags that are checked.
+      required: Boolean. If set, exactly one of the flags must be set.
+        Otherwise, it is also valid for none of the flags to be set.
+    """
+    message = ('%s one of (%s) must be specified.' %
+               ('Exactly' if required else 'At most', ', '.join(flag_names)))
+
+    def Checker(flag_dict):
+      flag_count = sum(1 for val in flag_dict.values() if val is not None)
+      return flag_count == 1 or (not required and flag_count == 0)
+
+    super(MutualExclusionValidator, self).__init__(flag_names, Checker, message)

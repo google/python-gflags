@@ -1,7 +1,5 @@
 #!/usr/bin/env python
-#
-# Copyright (c) 2009, Google Inc.
-# All rights reserved.
+# Copyright 2009 Google Inc. All Rights Reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -38,10 +36,8 @@ for gflags.py involve more than one module.
 
 __author__ = 'salcianu@google.com (Alex Salcianu)'
 
-__pychecker__ = 'no-local'  # for unittest
-
 import gflags
-from flags_modules_for_testing import module_bar
+from gflags.flags_modules_for_testing import module_bar
 
 FLAGS = gflags.FLAGS
 
@@ -120,7 +116,7 @@ def GetModuleName():
   """
   # Calling the protected _GetCallingModule generates a lint warning,
   # but we do not have any other alternative to test that function.
-  return gflags._GetCallingModule()
+  return gflags._GetCallingModule()  # pylint: disable=protected-access
 
 
 def DuplicateFlags(flagnames=None):
@@ -139,3 +135,8 @@ def DuplicateFlags(flagnames=None):
     gflags.DEFINE_boolean(name, False, 'Flag named %s' % (name,),
                          flag_values=flag_values)
   return flag_values
+
+
+def DefineBarFlags(flag_values=FLAGS):
+  """Defines flags from module_bar."""
+  module_bar.DefineFlags(flag_values)

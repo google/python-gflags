@@ -1,0 +1,11 @@
+URL: http://www.python.org/dev/peps/pep-0257/
+Version: e2b5d1a8a663
+License: public domain
+License File: LICENSE
+
+Description:
+PEP 257 specifies the conventions for python docstrings, including a function
+to remove leading whitespace.  This package contains that one function.
+
+Local Modifications:
+No modifications.

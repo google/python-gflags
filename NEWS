@@ -1,3 +1,11 @@
+== 12 January 2016 ==
+
+It's time to release a new version, isn't it?
+
+Version 3.0.0 includes all the changes accumulated over four years. Some of them
+may be backwards incompatible, but main idea behind the library remains the
+same.
+
 == 18 January 2012 ==
 
 [Prependum:] I just realized I should have named the new version 2.0,

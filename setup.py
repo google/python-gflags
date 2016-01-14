@@ -1,7 +1,5 @@
 #!/usr/bin/env python
-
-# Copyright (c) 2007, Google Inc.
-# All rights reserved.
+# Copyright 2007 Google Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -29,16 +27,18 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+"""Setup module for python-gflags."""
+
 from setuptools import setup
 
 setup(name='python-gflags',
-      version='2.0',
+      version='3.0.0',
       description='Google Commandline Flags Module',
       license='BSD',
       author='Google Inc. and others',
       author_email='google-gflags@googlegroups.com',
       url='https://github.com/google/python-gflags',
-      py_modules=["gflags", "gflags_validators"],
-      data_files=[("bin", ["gflags2man.py"])],
+      py_modules=['gflags'],
+      data_files=[('bin', ['gflags2man.py'])],
       include_package_data=True,
-)
+     )
