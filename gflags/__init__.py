@@ -567,7 +567,7 @@ def DEFINE_list(  # pylint: disable=g-bad-name,redefined-builtin
 
 
 def DEFINE_spaceseplist(  # pylint: disable=g-bad-name,redefined-builtin
-    name, default, help, flag_values=FLAGS, **args):
+    name, default, help, comma_compat=False, flag_values=FLAGS, **args):
   """Registers a flag whose value is a whitespace-separated list of strings.
 
   Any whitespace can be used as a separator.
@@ -576,11 +576,14 @@ def DEFINE_spaceseplist(  # pylint: disable=g-bad-name,redefined-builtin
     name: A string, the flag name.
     default: The default value of the flag.
     help: A help string.
+    comma_compat: bool - Whether to support comma as an additional separator.
+        If false then only whitespace is supported.  This is intended only for
+        backwards compatibility with flags that used to be comma-separated.
     flag_values: FlagValues object with which the flag will be registered.
     **args: Dictionary with extra keyword args that are passed to the
         Flag __init__.
   """
-  parser = WhitespaceSeparatedListParser()
+  parser = WhitespaceSeparatedListParser(comma_compat=comma_compat)
   serializer = ListSerializer(' ')
   DEFINE(parser, name, default, help, flag_values, serializer, **args)
 

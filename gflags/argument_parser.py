@@ -399,13 +399,35 @@ class ListParser(BaseListParser):
 class WhitespaceSeparatedListParser(BaseListParser):
   """Parser for a whitespace-separated list of strings."""
 
-  def __init__(self):
-    BaseListParser.__init__(self, None, 'whitespace')
+  def __init__(self, comma_compat=False):
+    """Initializer.
+
+    Args:
+      comma_compat: bool - Whether to support comma as an additional separator.
+          If false then only whitespace is supported.  This is intended only for
+          backwards compatibility with flags that used to be comma-separated.
+    """
+    self._comma_compat = comma_compat
+    name = 'whitespace or comma' if self._comma_compat else 'whitespace'
+    BaseListParser.__init__(self, None, name)
+
+  def Parse(self, argument):
+    """Override to support comma compatibility."""
+    if isinstance(argument, list):
+      return argument
+    elif not argument:
+      return []
+    else:
+      if self._comma_compat:
+        argument = argument.replace(',', ' ')
+      return argument.split()
 
   def WriteCustomInfoInXMLFormat(self, outfile, indent):
     BaseListParser.WriteCustomInfoInXMLFormat(self, outfile, indent)
     separators = list(string.whitespace)
+    if self._comma_compat:
+      separators.append(',')
     separators.sort()
-    for ws_char in string.whitespace:
-      _helpers.WriteSimpleXMLElement(outfile, 'list_separator', repr(ws_char),
+    for sep_char in separators:
+      _helpers.WriteSimpleXMLElement(outfile, 'list_separator', repr(sep_char),
                                      indent)
