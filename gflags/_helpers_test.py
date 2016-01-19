@@ -52,35 +52,35 @@ class FlagSuggestionTest(unittest.TestCase):
         'ftree-ch']
 
   def testDamerauLevenshteinId(self):
-    self.assertEquals(0, _helpers._DamerauLevenshtein('asdf', 'asdf'))
+    self.assertEqual(0, _helpers._DamerauLevenshtein('asdf', 'asdf'))
 
   def testDamerauLevenshteinEmpty(self):
-    self.assertEquals(5, _helpers._DamerauLevenshtein('', 'kites'))
-    self.assertEquals(6, _helpers._DamerauLevenshtein('kitten', ''))
+    self.assertEqual(5, _helpers._DamerauLevenshtein('', 'kites'))
+    self.assertEqual(6, _helpers._DamerauLevenshtein('kitten', ''))
 
   def testDamerauLevenshteinCommutative(self):
-    self.assertEquals(2, _helpers._DamerauLevenshtein('kitten', 'kites'))
-    self.assertEquals(2, _helpers._DamerauLevenshtein('kites', 'kitten'))
+    self.assertEqual(2, _helpers._DamerauLevenshtein('kitten', 'kites'))
+    self.assertEqual(2, _helpers._DamerauLevenshtein('kites', 'kitten'))
 
   def testDamerauLevenshteinTransposition(self):
-    self.assertEquals(1, _helpers._DamerauLevenshtein('kitten', 'ktiten'))
+    self.assertEqual(1, _helpers._DamerauLevenshtein('kitten', 'ktiten'))
 
   def testMispelledSuggestions(self):
     suggestions = _helpers.GetFlagSuggestions('fstack_protector_all',
                                               self.longopts)
-    self.assertEquals(['fstack-protector-all'], suggestions)
+    self.assertEqual(['fstack-protector-all'], suggestions)
 
   def testAmbiguousPrefixSuggestion(self):
     suggestions = _helpers.GetFlagSuggestions('fstack', self.longopts)
-    self.assertEquals(['fstack-protector', 'fstack-protector-all'], suggestions)
+    self.assertEqual(['fstack-protector', 'fstack-protector-all'], suggestions)
 
   def testMisspelledAmbiguousPrefixSuggestion(self):
     suggestions = _helpers.GetFlagSuggestions('stack', self.longopts)
-    self.assertEquals(['fstack-protector', 'fstack-protector-all'], suggestions)
+    self.assertEqual(['fstack-protector', 'fstack-protector-all'], suggestions)
 
   def testCrazySuggestion(self):
     suggestions = _helpers.GetFlagSuggestions('asdfasdgasdfa', self.longopts)
-    self.assertEquals([], suggestions)
+    self.assertEqual([], suggestions)
 
 
 def main():

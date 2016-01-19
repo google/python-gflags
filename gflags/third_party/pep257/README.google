@@ -8,4 +8,4 @@ PEP 257 specifies the conventions for python docstrings, including a function
 to remove leading whitespace.  This package contains that one function.
 
 Local Modifications:
-No modifications.
+* removed sys.maxint for Python 3 compatibility

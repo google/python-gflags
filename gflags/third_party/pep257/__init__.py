@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 
-import sys
-
 def trim(docstring):
     """Removes indentation from triple-quoted strings.
 
@@ -10,18 +8,24 @@ def trim(docstring):
     """
     if not docstring:
         return ''
+
+    # Since Python 3 does not support sys.maxint so we use and arbitrary
+    # large integer instead.
+    maxint = 1 << 32
+
     # Convert tabs to spaces (following the normal Python rules)
     # and split into a list of lines:
     lines = docstring.expandtabs().splitlines()
+
     # Determine minimum indentation (first line doesn't count):
-    indent = sys.maxint
+    indent = maxint
     for line in lines[1:]:
         stripped = line.lstrip()
         if stripped:
             indent = min(indent, len(line) - len(stripped))
     # Remove indentation (first line is special):
     trimmed = [lines[0].strip()]
-    if indent < sys.maxint:
+    if indent < maxint:
         for line in lines[1:]:
             trimmed.append(line[indent:].rstrip())
     # Strip off trailing and leading blank lines:
