@@ -29,12 +29,13 @@
 
 """Contains Flag class - information about single command-line flag."""
 
-
+from functools import total_ordering
 from gflags import _helpers
 from gflags import argument_parser
 from gflags import exceptions
 
 
+@total_ordering
 class Flag(object):
   """Information about a command-line flag.
 
