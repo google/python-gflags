@@ -382,7 +382,7 @@ class ListParser(BaseListParser):
     else:
       try:
         return [s.strip() for s in list(csv.reader([argument], strict=True))[0]]
-      except csv.Error, e:
+      except csv.Error as e:
         # Provide a helpful report for case like
         #   --listflag="$(printf 'hello,\nworld')"
         # IOW, list flag values containing naked newlines.  This error

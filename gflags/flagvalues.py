@@ -425,7 +425,7 @@ class FlagValues(object):
         validators, key=lambda validator: validator.insertion_index):
       try:
         validator.Verify(self)
-      except gflags_validators.Error, e:
+      except gflags_validators.Error as e:
         message = validator.PrintFlagsWithValues(self)
         raise exceptions.IllegalFlagValue('%s: %s' % (message, str(e)))
 
@@ -945,7 +945,7 @@ class FlagValues(object):
     flag_line_list = []  # Subset of lines w/o comments, blanks, flagfile= tags.
     try:
       file_obj = open(filename, 'r')
-    except IOError, e_msg:
+    except IOError as e_msg:
       raise exceptions.CantOpenFlagFileError(
           'ERROR:: Unable to open flagfile: %s' % e_msg)
 

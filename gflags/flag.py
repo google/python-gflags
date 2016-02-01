@@ -131,7 +131,7 @@ class Flag(object):
               self.name, argument, self.value))
     try:
       self.value = self.parser.Parse(argument)
-    except ValueError, e:  # Recast ValueError as IllegalFlagValue.
+    except ValueError as e:  # Recast ValueError as IllegalFlagValue.
       raise exceptions.IllegalFlagValue(
           'flag --%s=%s: %s' % (self.name, argument, e))
     self.present += 1
