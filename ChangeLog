@@ -1,3 +1,10 @@
+Thu Feb 04 22:23:00 2016  Google Inc. <google-gflags@googlegroups.com>
+
+  * python-gflags: version 3.0.1
+  * Some changes for python3 compatibility.
+  * Automatically generate ordering operations for Flag.
+  * Add optional comma compatibility to whitespace-separated list flags.
+
 Tue Jan 12 16:39:00 2016  Google Inc. <google-gflags@googlegroups.com>
 
   * python-gflags: version 3.0.0.
