@@ -1,3 +1,8 @@
+Thu Feb 09 11:55:00 2016  Google Inc. <google-gflags@googlegroups.com>
+
+  * python-gflags: version 3.0.2
+  * Fix MANIFEST.in to include all relevant files.
+
 Thu Feb 04 22:23:00 2016  Google Inc. <google-gflags@googlegroups.com>
 
   * python-gflags: version 3.0.1
