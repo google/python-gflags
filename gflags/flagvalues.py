@@ -585,10 +585,16 @@ class FlagValues(object):
     unknown_flags, unparsed_args, undefok = [], [], set()
 
     flag_dict = self.FlagDict()
-    i = 0
-    while i < len(args):
-      arg = args[i]
-      i += 1
+    args = iter(args)
+    for arg in args:
+      value = None
+
+      def GetValue():
+        # pylint: disable=cell-var-from-loop
+        try:
+          return next(args) if value is None else value
+        except StopIteration:
+          raise exceptions.FlagsError('Missing value for flag ' + arg)
 
       if not arg.startswith('-'):
         # A non-argument: default is break, GNU is skip.
@@ -616,30 +622,14 @@ class FlagValues(object):
 
       # --undefok is a special case.
       if name == 'undefok':
-        if value is None:
-          try:
-            value = args[i]
-            i += 1
-          except IndexError:
-            raise exceptions.FlagsError('Missing value for flag %s' % arg)
-
+        value = GetValue()
         undefok.update(v.strip() for v in value.split(','))
         undefok.update('no' + v.strip() for v in value.split(','))
         continue
 
       if name in flag_dict:
         flag = flag_dict[name]
-        if flag.boolean and value is None:
-          # Boolean flags can take the form of --flag, with no value.
-          value = True
-        else:
-          if value is None:
-            # The value is the next argument.
-            try:
-              value = args[i]
-              i += 1
-            except IndexError:
-              raise exceptions.FlagsError('Missing value for flag %s' % arg)
+        value = (flag.boolean and value is None) or GetValue()
       else:
         # Boolean flags can take the form of --noflag, with no value.
         noflag = None
@@ -656,7 +646,7 @@ class FlagValues(object):
       flag.Parse(value)
       flag.using_default_value = False
 
-    unparsed_args.extend(args[i:])
+    unparsed_args.extend(args)
     return unknown_flags, unparsed_args, undefok
 
   def IsParsed(self):
