@@ -536,6 +536,7 @@ class FlagValues(object):
 
     Raises:
        FlagsError: on any parsing error.
+       ValueError: on flag value parsing error.
     """
     if not argv:
       # Unfortunately, the old parser used to accept an empty argv, and some
@@ -581,6 +582,10 @@ class FlagValues(object):
         unknown_flags: List of (flag name, arg) for flags we don't know about.
         unparsed_args: List of arguments we did not parse.
         undefok: Set of flags that were given via --undefok.
+
+    Raises:
+       FlagsError: on any parsing error.
+       ValueError: on flag value parsing error.
     """
     unknown_flags, unparsed_args, undefok = [], [], set()
 
@@ -627,24 +632,23 @@ class FlagValues(object):
         undefok.update('no' + v.strip() for v in value.split(','))
         continue
 
-      if name in flag_dict:
-        flag = flag_dict[name]
+      flag = flag_dict.get(name)
+      if flag:
         value = (flag.boolean and value is None) or GetValue()
-      else:
+      elif name.startswith('no') and len(name) > 2:
         # Boolean flags can take the form of --noflag, with no value.
-        noflag = None
-        if name.startswith('no'):
-          noflag = flag_dict.get(name[2:], None)
-
+        noflag = flag_dict.get(name[2:])
         if noflag and noflag.boolean:
+          if value is not None:
+            raise ValueError(arg + ' does not take an argument')
           flag = noflag
           value = False
-        else:
-          unknown_flags.append((name, arg))
-          continue
 
-      flag.Parse(value)
-      flag.using_default_value = False
+      if flag:
+        flag.Parse(value)
+        flag.using_default_value = False
+      else:
+        unknown_flags.append((name, arg))
 
     unparsed_args.extend(args)
     return unknown_flags, unparsed_args, undefok
