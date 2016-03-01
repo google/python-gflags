@@ -35,11 +35,11 @@ import sys
 import traceback
 import warnings
 
-
 from gflags import _helpers
 from gflags import exceptions
 from gflags import flag as _flag
 from gflags import validators as gflags_validators
+
 
 # Add flagvalues module to disclaimed module ids.
 _helpers.disclaim_module_ids.add(id(sys.modules[__name__]))
@@ -643,6 +643,7 @@ class FlagValues(object):
             raise ValueError(arg + ' does not take an argument')
           flag = noflag
           value = False
+
 
       if flag:
         flag.Parse(value)
