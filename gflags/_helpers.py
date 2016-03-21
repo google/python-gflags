@@ -30,7 +30,6 @@
 
 """Helper functions for //gflags."""
 
-import cgi
 import collections
 import itertools
 import os
@@ -150,7 +149,10 @@ def StrOrUnicode(value):
 # TODO(vrusinov): this function must die.
 def _MakeXMLSafe(s):
   """Escapes <, >, and & from s, and removes XML 1.0-illegal chars."""
-  s = cgi.escape(s)  # Escape <, >, and &
+  # Note that we cannot use cgi.escape() here since it is not supported by
+  # Python 3.
+  s = s.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+
   # Remove characters that cannot appear in an XML 1.0 document
   # (http://www.w3.org/TR/REC-xml/#charsets).
   #

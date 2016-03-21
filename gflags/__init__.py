@@ -48,7 +48,6 @@ The specific function used determines how the flag is parsed, checked,
 and optionally type-converted, when it's seen on the command line.
 """
 
-import cgi
 import getopt
 import os
 import re
