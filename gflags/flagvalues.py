@@ -106,6 +106,9 @@ class FlagValues(object):
     # Bool: True if flags were parsed.
     self.__dict__['__flags_parsed'] = False
 
+    # Bool: True if Reset() was called.
+    self.__dict__['__reset_called'] = False
+
     # Set if we should use new style gnu_getopt rather than getopt when parsing
     # the args.  Only possible with Python 2.3+
     self.UseGnuGetOpt(False)
@@ -387,7 +390,12 @@ class FlagValues(object):
         traceback.print_stack()
         raise exceptions.UnparsedFlagAccessError(error_message)
       except exceptions.UnparsedFlagAccessError:
-        if os.getenv('GFLAGS_ALLOW_UNPARSED_FLAG_ACCESS', '1') == '1':
+        if self.__dict__['__reset_called']:
+          # Raise exception if .Reset() was called. This mostly happens in tests
+          # and very hard to fix via automated test, so we rather make those
+          # tests fail.
+          raise
+        elif os.getenv('GFLAGS_ALLOW_UNPARSED_FLAG_ACCESS', '1') == '1':
           logging.exception(error_message)
           return fl[name].value
         else:
@@ -672,6 +680,8 @@ class FlagValues(object):
     for f in self.FlagDict().values():
       f.Unparse()
     self.__dict__['__flags_parsed'] = False
+    logging.warning('Reset() called; flags access will raise errors now.')
+    self.__dict__['__reset_called'] = True
 
   def RegisteredFlags(self):
     """Returns: a list of the names and short names of all registered flags."""
