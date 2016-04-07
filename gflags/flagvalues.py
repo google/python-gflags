@@ -680,7 +680,7 @@ class FlagValues(object):
     for f in self.FlagDict().values():
       f.Unparse()
     self.__dict__['__flags_parsed'] = False
-    logging.warning('Reset() called; flags access will raise errors now.')
+    logging.info('Reset() called; flags access will raise errors now.')
     self.__dict__['__reset_called'] = True
 
   def RegisteredFlags(self):
