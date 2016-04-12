@@ -1,3 +1,11 @@
+Mon Apr 11 00:00:01 2016  Google Inc. <google-gflags@googlegroups.com>
+
+  * python-gflags: version 3.0.3
+  * Fixed setup.py.
+  * --noflag if argument is given is no longer allowed.
+  * Python3 compatibility: removed need for cgi import.
+  * Disallowed unparsed flag usage after FLAGS.Reset()
+
 Thu Feb 09 11:55:00 2016  Google Inc. <google-gflags@googlegroups.com>
 
   * python-gflags: version 3.0.2
