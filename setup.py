@@ -38,6 +38,6 @@ setup(name='python-gflags',
       author='Google Inc. and others',
       author_email='google-gflags@googlegroups.com',
       url='https://github.com/google/python-gflags',
-      packages=['gflags'],
+      packages=['gflags', 'gflags.third_party', 'gflags.third_party.pep257'],
       data_files=[('bin', ['gflags2man.py'])],
      )
