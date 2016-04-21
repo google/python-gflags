@@ -225,6 +225,25 @@ def MarkFlagAsRequired(flag_name, flag_values=FLAGS):
                     flag_values=flag_values)
 
 
+def MarkFlagsAsRequired(flag_names, flag_values=FLAGS):
+  """Ensure that flags are not None during program execution.
+
+  Recommended usage:
+
+    if __name__ == '__main__':
+      MarkFlagsAsRequired(['flag1', 'flag2', 'flag3'])
+      app.run()
+
+  Args:
+    flag_names: list/tuple, names of the flags.
+    flag_values: FlagValues
+  Raises:
+    AttributeError: If any of flag name has not already been defined as a flag.
+  """
+  for flag_name in flag_names:
+    MarkFlagAsRequired(flag_name, flag_values)
+
+
 def _RegisterBoundsValidatorIfNeeded(parser, name, flag_values):
   """Enforce lower and upper bounds for numeric flags.
 
