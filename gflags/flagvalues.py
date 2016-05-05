@@ -515,10 +515,27 @@ class FlagValues(object):
         flags_in_module.remove(flag_obj)
 
   def SetDefault(self, name, value):
-    """Changes the default value of the named flag object."""
+    """Changes the default value (and current value) of the named flag object.
+
+    Call this method at the top level of a module to avoid overwriting the value
+    passed at the command line.
+
+    Args:
+      name: A string, the name of the flag to modify.
+      value: The new default value.
+
+    Raises:
+      AttributeError: When there is no registered flag named name.
+    """
     fl = self.FlagDict()
     if name not in fl:
       raise AttributeError(name)
+    if self.IsParsed():
+      logging.warn(
+          'FLAGS.SetDefault called on flag "%s" after flag parsing. Call this '
+          'method at the top level of a module to avoid overwriting the value '
+          'passed at the command line.',
+          name)
     fl[name].SetDefault(value)
     self._AssertValidators(fl[name].validators)
 
