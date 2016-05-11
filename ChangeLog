@@ -1,3 +1,9 @@
+Thu May 12 00:00:01 2016  Google Inc. <google-gflags@googlegroups.com>
+
+  * python-gflags: version 3.0.5
+  * Added a warning when FLAGS.SetDefault is used after flags were parsed.
+  * Added new function: MarkFlagsAsRequired.
+
 Fri Apr 15 00:00:01 2016  Google Inc. <google-gflags@googlegroups.com>
 
   * python-gflags: version 3.0.4
