@@ -34,9 +34,9 @@
 #   Eric Veach, Laurence Gonsalves, Matthew Springer, Craig Silverstein,
 #   Vladimir Rusinov
 
-"""This module is used to define and parse command line flags.
+"""This package is used to define and parse command line flags.
 
-This module defines a *distributed* flag-definition policy: rather than
+This package defines a *distributed* flag-definition policy: rather than
 an application having to define all flags in or near main(), each python
 module defines flags that are useful to it.  When one python module
 imports another, it gains access to the other's flags.  (This is
@@ -123,10 +123,10 @@ FLAGS = FlagValues()
 # Flags validators
 
 
-def RegisterValidator(flag_name,
-                      checker,
-                      message='Flag validation failed',
-                      flag_values=FLAGS):
+def register_validator(flag_name,
+                       checker,
+                       message='Flag validation failed',
+                       flag_values=FLAGS):
   """Adds a constraint, which will be enforced during program execution.
 
   The constraint is validated when flags are initially parsed, and after each
@@ -148,21 +148,20 @@ def RegisterValidator(flag_name,
   Raises:
     AttributeError: If flag_name is not registered as a valid flag name.
   """
-  flag_values.AddValidator(gflags_validators.SimpleValidator(flag_name,
-                                                            checker,
-                                                            message))
+  v = gflags_validators.SingleFlagValidator(flag_name, checker, message)
+  _add_validator(flag_values, v)
 
 
-def Validator(flag_name, message='Flag validation failed', flag_values=FLAGS):
+def validator(flag_name, message='Flag validation failed', flag_values=FLAGS):
   """A function decorator for defining a flag validator.
 
   Registers the decorated function as a validator for flag_name, e.g.
 
-  @gflags.Validator('foo')
+  @gflags.validator('foo')
   def _CheckFoo(foo):
     ...
 
-  See RegisterValidator() for the specification of checker function.
+  See register_validator() for the specification of checker function.
 
   Args:
     flag_name: string, name of the flag to be checked.
@@ -176,18 +175,18 @@ def Validator(flag_name, message='Flag validation failed', flag_values=FLAGS):
     AttributeError: if flag_name is not registered as a valid flag name.
   """
 
-  def Decorate(function):
-    RegisterValidator(flag_name, function,
-                      message=message,
-                      flag_values=flag_values)
+  def decorate(function):
+    register_validator(flag_name, function,
+                       message=message,
+                       flag_values=flag_values)
     return function
-  return Decorate
+  return decorate
 
 
-def RegisterMultiFlagsValidator(flag_names,
-                                multi_flags_checker,
-                                message='Flags validation failed',
-                                flag_values=FLAGS):
+def register_multi_flags_validator(flag_names,
+                                   multi_flags_checker,
+                                   message='Flags validation failed',
+                                   flag_values=FLAGS):
   """Adds a constraint to multiple flags.
 
   The constraint is validated when flags are initially parsed, and after each
@@ -209,30 +208,30 @@ def RegisterMultiFlagsValidator(flag_names,
   Raises:
     AttributeError: If a flag is not registered as a valid flag name.
   """
-  flag_values.AddValidator(
-      gflags_validators.DictionaryValidator(flag_names,
-                                           multi_flags_checker,
-                                           message))
+  v = gflags_validators.MultiFlagsValidator(
+      flag_names, multi_flags_checker, message)
+  _add_validator(flag_values, v)
 
 
-def MultiFlagsValidator(flag_names,
-                        message='Flag validation failed',
-                        flag_values=FLAGS):
+def multi_flags_validator(flag_names,
+                          message='Flag validation failed',
+                          flag_values=FLAGS):
   """A function decorator for defining a multi-flag validator.
 
   Registers the decorated function as a validator for flag_names, e.g.
 
-  @gflags.MultiFlagsValidator(['foo', 'bar'])
+  @gflags.multi_flags_validator(['foo', 'bar'])
   def _CheckFooBar(flags_dict):
     ...
 
-  See RegisterMultiFlagsValidator() for the specification of checker function.
+  See register_multi_flags_validator() for the specification of checker
+  function.
 
   Args:
     flag_names: [str], a list of the flag names to be checked.
     message: error text to be shown to the user if checker returns False.
-        If checker raises gflags_validators.Error, message from the raised Error
-        will be shown.
+        If checker raises ValidationError, message from the raised
+        error will be shown.
     flag_values: An optional FlagValues instance to validate against.
 
   Returns:
@@ -242,17 +241,17 @@ def MultiFlagsValidator(flag_names,
     AttributeError: If a flag is not registered as a valid flag name.
   """
 
-  def Decorate(function):
-    RegisterMultiFlagsValidator(flag_names,
-                                function,
-                                message=message,
-                                flag_values=flag_values)
+  def decorate(function):
+    register_multi_flags_validator(flag_names,
+                                   function,
+                                   message=message,
+                                   flag_values=flag_values)
     return function
 
-  return Decorate
+  return decorate
 
 
-def MarkFlagAsRequired(flag_name, flag_values=FLAGS):
+def mark_flag_as_required(flag_name, flag_values=FLAGS):
   """Ensures that flag is not None during program execution.
 
   Registers a flag validator, which will follow usual validator rules.
@@ -262,7 +261,7 @@ def MarkFlagAsRequired(flag_name, flag_values=FLAGS):
   It is recommended to call this method like this:
 
     if __name__ == '__main__':
-      MarkFlagAsRequired('your_flag_name')
+      gflags.mark_flag_as_required('your_flag_name')
       app.run()
 
   Because validation happens at app.run() we want to ensure required-ness
@@ -276,25 +275,25 @@ def MarkFlagAsRequired(flag_name, flag_values=FLAGS):
   Raises:
     AttributeError: if flag_name is not registered as a valid flag name.
   """
-  if flag_values.GetFlag(flag_name).default is not None:
+  if flag_values[flag_name].default is not None:
     # TODO(vrusinov): Turn this warning into an exception.
     warnings.warn(
         'Flag %s has a non-None default value; therefore, '
-        'MarkFlagAsRequired will pass even if flag is not specified in the '
+        'mark_flag_as_required will pass even if flag is not specified in the '
         'command line!' % flag_name)
-  RegisterValidator(flag_name,
-                    lambda value: value is not None,
-                    message='Flag --%s must be specified.' % flag_name,
-                    flag_values=flag_values)
+  register_validator(flag_name,
+                     lambda value: value is not None,
+                     message='Flag --%s must be specified.' % flag_name,
+                     flag_values=flag_values)
 
 
-def MarkFlagsAsRequired(flag_names, flag_values=FLAGS):
+def mark_flags_as_required(flag_names, flag_values=FLAGS):
   """Ensures that flags are not None during program execution.
 
   Recommended usage:
 
     if __name__ == '__main__':
-      MarkFlagsAsRequired(['flag1', 'flag2', 'flag3'])
+      gflags.mark_flags_as_required(['flag1', 'flag2', 'flag3'])
       app.run()
 
   Args:
@@ -304,10 +303,11 @@ def MarkFlagsAsRequired(flag_names, flag_values=FLAGS):
     AttributeError: If any of flag name has not already been defined as a flag.
   """
   for flag_name in flag_names:
-    MarkFlagAsRequired(flag_name, flag_values)
+    mark_flag_as_required(flag_name, flag_values)
 
 
-def MarkFlagsAsMutualExclusive(flag_names, required=False, flag_values=FLAGS):
+def mark_flags_as_mutual_exclusive(flag_names, required=False,
+                                   flag_values=FLAGS):
   """Ensures that only one flag among flag_names is set.
 
   Args:
@@ -317,19 +317,32 @@ def MarkFlagsAsMutualExclusive(flag_names, required=False, flag_values=FLAGS):
     flag_values: An optional FlagValues instance to validate against.
   """
 
-  def ValidateMutualExclusion(flags_dict):
+  def validate_mutual_exclusion(flags_dict):
     flag_count = sum(1 for val in flags_dict.values() if val is not None)
     if flag_count == 1 or (not required and flag_count == 0):
       return True
     message = ('%s one of (%s) must be specified.' %
                ('Exactly' if required else 'At most', ', '.join(flag_names)))
-    raise gflags_validators.Error(message)
+    raise ValidationError(message)
 
-  RegisterMultiFlagsValidator(
-      flag_names, ValidateMutualExclusion, flag_values=flag_values)
+  register_multi_flags_validator(
+      flag_names, validate_mutual_exclusion, flag_values=flag_values)
 
 
-def _RegisterBoundsValidatorIfNeeded(parser, name, flag_values):
+def _add_validator(fv, validator_instance):
+  """Register new flags validator to be checked.
+
+  Args:
+    fv: flagvalues.FlagValues
+    validator_instance: validators.Validator
+  Raises:
+    KeyError: if validators work with a non-existing flag.
+  """
+  for flag_name in validator_instance.get_flags_names():
+    fv[flag_name].validators.append(validator_instance)
+
+
+def _register_bounds_validator_if_needed(parser, name, flag_values):
   """Enforces lower and upper bounds for numeric flags.
 
   Args:
@@ -340,21 +353,19 @@ def _RegisterBoundsValidatorIfNeeded(parser, name, flag_values):
   """
   if parser.lower_bound is not None or parser.upper_bound is not None:
 
-    def Checker(value):
+    def checker(value):
       if value is not None and parser.IsOutsideBounds(value):
         message = '%s is not %s' % (value, parser.syntactic_help)
         raise ValidationError(message)
       return True
 
-    RegisterValidator(name,
-                      Checker,
-                      flag_values=flag_values)
+    register_validator(name, checker, flag_values=flag_values)
 
 
 # The DEFINE functions are explained in more details in the module doc string.
 
 
-def DEFINE(parser, name, default, help, flag_values=FLAGS, serializer=None,  # pylint: disable=redefined-builtin
+def DEFINE(parser, name, default, help, flag_values=FLAGS, serializer=None,  # pylint: disable=redefined-builtin,invalid-name
            module_name=None, **args):
   """Registers a generic Flag object.
 
@@ -418,8 +429,8 @@ def DEFINE_flag(flag, flag_values=FLAGS, module_name=None):  # pylint: disable=g
     # pylint: enable=protected-access
 
 
-def _InternalDeclareKeyFlags(flag_names,
-                             flag_values=FLAGS, key_flag_values=None):
+def _internal_declare_key_flags(flag_names,
+                                flag_values=FLAGS, key_flag_values=None):
   """Declares a flag as key for the calling module.
 
   Internal function.  User code should call DECLARE_key_flag or
@@ -477,11 +488,11 @@ def DECLARE_key_flag(  # pylint: disable=g-bad-name
     # These flags are defined in _SPECIAL_FLAGS, and are treated
     # specially during flag parsing, taking precedence over the
     # user-defined flags.
-    _InternalDeclareKeyFlags([flag_name],
-                             flag_values=_helpers.SPECIAL_FLAGS,
-                             key_flag_values=flag_values)
+    _internal_declare_key_flags([flag_name],
+                                flag_values=_helpers.SPECIAL_FLAGS,
+                                key_flag_values=flag_values)
     return
-  _InternalDeclareKeyFlags([flag_name], flag_values=flag_values)
+  _internal_declare_key_flags([flag_name], flag_values=flag_values)
 
 
 def ADOPT_module_key_flags(  # pylint: disable=g-bad-name
@@ -500,12 +511,12 @@ def ADOPT_module_key_flags(  # pylint: disable=g-bad-name
   if not isinstance(module, types.ModuleType):
     raise FlagsError('Expected a module object, not %r.' % (module,))
   # TODO(vrusinov): _GetKeyFlagsForModule should be public.
-  _InternalDeclareKeyFlags(
+  _internal_declare_key_flags(
       [f.name for f in flag_values._GetKeyFlagsForModule(module.__name__)],  # pylint: disable=protected-access
       flag_values=flag_values)
   # If module is this flag module, take _helpers._SPECIAL_FLAGS into account.
   if module == _helpers.GetModuleObjectAndName(globals())[0]:
-    _InternalDeclareKeyFlags(
+    _internal_declare_key_flags(
         # As we associate flags with _GetCallingModuleObjectAndName(), the
         # special flags defined in this module are incorrectly registered with
         # a different module.  So, we can't use _GetKeyFlagsForModule.
@@ -598,7 +609,7 @@ def DEFINE_float(  # pylint: disable=g-bad-name,redefined-builtin
   parser = FloatParser(lower_bound, upper_bound)
   serializer = ArgumentSerializer()
   DEFINE(parser, name, default, help, flag_values, serializer, **args)
-  _RegisterBoundsValidatorIfNeeded(parser, name, flag_values=flag_values)
+  _register_bounds_validator_if_needed(parser, name, flag_values=flag_values)
 
 
 def DEFINE_integer(  # pylint: disable=g-bad-name,redefined-builtin
@@ -621,7 +632,7 @@ def DEFINE_integer(  # pylint: disable=g-bad-name,redefined-builtin
   parser = IntegerParser(lower_bound, upper_bound)
   serializer = ArgumentSerializer()
   DEFINE(parser, name, default, help, flag_values, serializer, **args)
-  _RegisterBoundsValidatorIfNeeded(parser, name, flag_values=flag_values)
+  _register_bounds_validator_if_needed(parser, name, flag_values=flag_values)
 
 
 def DEFINE_enum(  # pylint: disable=g-bad-name,redefined-builtin
@@ -864,3 +875,16 @@ DEFINE_string(
     'on the command line even if the program does not define a flag '
     'with that name.  IMPORTANT: flags in this list that have '
     'arguments MUST use the --flag=value format.', _helpers.SPECIAL_FLAGS)
+
+
+# Old CamelCase functions. It's OK to use them, but those use cases will be
+# migrated to PEP8 style functions in the future.
+# pylint: disable=invalid-name
+RegisterValidator = register_validator
+Validator = validator
+RegisterMultiFlagsValidator = register_multi_flags_validator
+MultiFlagsValidator = multi_flags_validator
+MarkFlagAsRequired = mark_flag_as_required
+MarkFlagsAsRequired = mark_flags_as_required
+MarkFlagsAsMutualExclusive = mark_flags_as_mutual_exclusive
+# pylint: enable=invalid-name

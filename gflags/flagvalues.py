@@ -27,7 +27,11 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""Flagvalues module - Registry of 'Flag' objects."""
+"""Flagvalues module - Registry of 'Flag' objects.
+
+Instead of importing this module directly, it's preferable to import the
+flags package and use the aliases defined at the package level.
+"""
 
 import hashlib
 import logging
@@ -558,9 +562,9 @@ class FlagValues(object):
     for validator in sorted(
         validators, key=lambda validator: validator.insertion_index):
       try:
-        validator.Verify(self)
+        validator.verify(self)
       except exceptions.ValidationError as e:
-        message = validator.PrintFlagsWithValues(self)
+        message = validator.print_flags_with_values(self)
         raise exceptions.IllegalFlagValueError('%s: %s' % (message, str(e)))
 
   def __delattr__(self, flag_name):
@@ -1237,15 +1241,5 @@ class FlagValues(object):
     outfile.write('</AllFlags>\n')
     outfile.flush()
 
-  def AddValidator(self, validator):
-    """Register new flags validator to be checked.
-
-    Args:
-      validator: validators.Validator
-    Raises:
-      AttributeError: if validators work with a non-existing flag.
-    """
-    for flag_name in validator.GetFlagsNames():
-      self.GetFlag(flag_name).validators.append(validator)
 
 _helpers.SPECIAL_FLAGS = FlagValues()

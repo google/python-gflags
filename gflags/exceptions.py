@@ -28,7 +28,11 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-"""//gflags exceptions."""
+"""//gflags exceptions.
+
+Instead of importing this module directly, it's preferable to import the
+flags package and use the aliases defined at the package level.
+"""
 
 import sys
 

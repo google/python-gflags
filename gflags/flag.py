@@ -27,7 +27,11 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""Contains Flag class - information about single command-line flag."""
+"""Contains Flag class - information about single command-line flag.
+
+Instead of importing this module directly, it's preferable to import the
+flags package and use the aliases defined at the package level.
+"""
 
 from functools import total_ordering
 from gflags import _helpers
