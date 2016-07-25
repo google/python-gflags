@@ -325,7 +325,7 @@ def DEFINE_flag(flag, flag_values=FLAGS, module_name=None):  # pylint: disable=g
     # debug).  To avoid breaking their code, we perform the
     # registration only if flag_values is a real FlagValues object.
     if module_name:
-      module = sys.modules[module_name]
+      module = sys.modules.get(module_name)
     else:
       module, module_name = _helpers.GetCallingModuleObjectAndName()
     # TODO(vrusinov): _RegisterFlagByModule* should be public.

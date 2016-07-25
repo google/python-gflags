@@ -75,7 +75,7 @@ class Flag(object):
 
   def __init__(self, parser, serializer, name, default, help_string,
                short_name=None, boolean=False, allow_override=False,
-               allow_overwrite=True):
+               allow_overwrite=True, parse_default=True):
     self.name = name
 
     if not help_string:
@@ -93,7 +93,10 @@ class Flag(object):
     self.value = None
     self.validators = []
 
-    self.SetDefault(default)
+    if parse_default:
+      self.SetDefault(default)
+    else:
+      self.default = default
 
   def __hash__(self):
     return hash(id(self))

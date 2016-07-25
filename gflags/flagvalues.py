@@ -40,7 +40,6 @@ from gflags import exceptions
 from gflags import flag as _flag
 from gflags import validators as gflags_validators
 
-
 # Add flagvalues module to disclaimed module ids.
 _helpers.disclaim_module_ids.add(id(sys.modules[__name__]))
 
@@ -406,9 +405,13 @@ class FlagValues(object):
     fl = self.FlagDict()
     if name in self.__dict__['__hiddenflags']:
       raise AttributeError(name)
-    fl[name].value = value
+    if fl[name].Type() == '[C++]':
+      fl[name].parser.Parse(value)
+      fl[name].value = value
+    else:
+      fl[name].value = value
+      self._AssertValidators(fl[name].validators)
     fl[name].using_default_value = False
-    self._AssertValidators(fl[name].validators)
     return value
 
   def _AssertAllValidators(self):
@@ -548,13 +551,14 @@ class FlagValues(object):
   def __iter__(self):
     return iter(self.FlagDict())
 
-  def __call__(self, argv):
+  def __call__(self, argv, known_only=False):
     """Parses flags from argv; stores parsed flags into this FlagValues object.
 
     All unparsed arguments are returned.
 
     Args:
        argv: argument list. Can be of any type that may be converted to a list.
+       known_only: parse and remove known flags, return rest untouched.
 
     Returns:
        The list of arguments not parsed as options, including argv[0].
@@ -575,7 +579,7 @@ class FlagValues(object):
     args = self.ReadFlagsFromFiles(argv[1:], force_gnu=False)
 
     # Parse the arguments.
-    unknown_flags, unparsed_args, undefok = self._ParseArgs(args)
+    unknown_flags, unparsed_args, undefok = self._ParseArgs(args, known_only)
 
     # Handle unknown flags by raising UnrecognizedFlagError.
     # Note some users depend on us raising this particular error.
@@ -592,7 +596,7 @@ class FlagValues(object):
     self._AssertAllValidators()
     return [program_name] + unparsed_args
 
-  def _ParseArgs(self, args):
+  def _ParseArgs(self, args, known_only):
     """Helper function to do the main argument parsing.
 
     This function goes through args and does the bulk of the flag parsing.
@@ -601,6 +605,7 @@ class FlagValues(object):
 
     Args:
       args: List of strings with the arguments to parse.
+      known_only: parse and remove known flags, return rest in unparsed_args
 
     Returns:
       A tuple with the following:
@@ -635,6 +640,8 @@ class FlagValues(object):
           break
 
       if arg == '--':
+        if known_only:
+          unparsed_args.append(arg)
         break
 
       if '=' in arg:
@@ -673,6 +680,8 @@ class FlagValues(object):
       if flag:
         flag.Parse(value)
         flag.using_default_value = False
+      elif known_only:
+        unparsed_args.append(arg)
       else:
         unknown_flags.append((name, arg))
 
