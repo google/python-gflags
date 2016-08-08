@@ -1,3 +1,10 @@
+Fri Aug 05 00:00:01 2016  Google Inc. <google-gflags@googlegroups.com>
+
+  * python-gflags: version 3.0.6
+  * Declared pypi package classifiers.
+  * Added support for CLIF flag processing (not included in python-gflags repo
+    yet).
+
 Thu May 12 00:00:01 2016  Google Inc. <google-gflags@googlegroups.com>
 
   * python-gflags: version 3.0.5
