@@ -73,7 +73,6 @@ _helpers.disclaim_module_ids.add(id(sys.modules[__name__]))
 # Following aliases required because there is a lot of code that uses private
 # functions from here.
 # TODO(vrusinov): this code needs to be fixed and aliases needs to be removed.
-_GetCallingModule = _helpers.GetCallingModule
 _GetModuleObjectAndName = _helpers.GetModuleObjectAndName
 _GetMainModule = _helpers.GetMainModule
 _DamerauLevenshtein = _helpers._DamerauLevenshtein  # pylint: disable=protected-access
@@ -360,7 +359,7 @@ def _InternalDeclareKeyFlags(flag_names,
   """
   key_flag_values = key_flag_values or flag_values
 
-  module = _GetCallingModule()
+  module = _helpers.GetCallingModule()
 
   for flag_name in flag_names:
     flag = flag_values.GetFlag(flag_name)

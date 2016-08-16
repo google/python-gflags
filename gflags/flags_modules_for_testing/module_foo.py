@@ -37,6 +37,7 @@ for gflags.py involve more than one module.
 __author__ = 'salcianu@google.com (Alex Salcianu)'
 
 import gflags
+from gflags import _helpers
 from gflags.flags_modules_for_testing import module_bar
 
 FLAGS = gflags.FLAGS
@@ -107,16 +108,14 @@ def RemoveFlags(flag_values=FLAGS):
 
 
 def GetModuleName():
-  """Uses gflags._GetCallingModule() to return the name of this module.
+  """Uses GetCallingModule() to return the name of this module.
 
   For checking that _GetCallingModule works as expected.
 
   Returns:
     A string, the name of this module.
   """
-  # Calling the protected _GetCallingModule generates a lint warning,
-  # but we do not have any other alternative to test that function.
-  return gflags._GetCallingModule()  # pylint: disable=protected-access
+  return _helpers.GetCallingModule()
 
 
 def DuplicateFlags(flagnames=None):
