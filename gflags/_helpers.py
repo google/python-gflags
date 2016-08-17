@@ -403,3 +403,14 @@ def DocToHelp(doc):
   doc = re.sub(r'(?<=\S)\n(?=\S)', ' ', doc, flags=re.M)
 
   return doc
+
+
+def IsRunningTest():
+  """Tries to detect whether we are inside of the test."""
+  modules = set(sys.modules)
+  test_modules = {
+      'unittest',
+      'unittest2',
+      'pytest',
+  }
+  return bool(test_modules & modules)

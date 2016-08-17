@@ -163,6 +163,12 @@ class GetCallingModuleTest(unittest.TestCase):
       sys.modules = orig_sys_modules
 
 
+class IsRunningTestTest(unittest.TestCase):
+
+  def testUnderTest(self):
+    self.assertTrue(_helpers.IsRunningTest())
+
+
 def main():
   unittest.main()
 

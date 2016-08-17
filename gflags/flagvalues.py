@@ -29,8 +29,10 @@
 
 """Flagvalues module - Registry of 'Flag' objects."""
 
+import hashlib
 import logging
 import os
+import struct
 import sys
 import traceback
 import warnings
@@ -46,6 +48,14 @@ _helpers.disclaim_module_ids.add(id(sys.modules[__name__]))
 # The MOE directives in this file cause the docstring indentation
 # linter to go nuts.
 # pylint: disable=g-doc-bad-indent
+
+# Environment variable that controls whether to allow unparsed flag access.
+# Do not rely on, it will be removed later.
+_UNPARSED_FLAG_ACCESS_ENV_NAME = 'GFLAGS_ALLOW_UNPARSED_FLAG_ACCESS'
+
+# Percentage of the flag names for which unparsed flag access will fail by
+# default.
+_UNPARSED_ACCESS_DISABLED_PERCENT = 0
 
 
 class FlagValues(object):
@@ -359,6 +369,28 @@ class FlagValues(object):
     """Mark the flag --name as hidden."""
     self.__dict__['__hiddenflags'].add(name)
 
+  def _IsUnparsedFlagAccessAllowed(self, name):
+    """Determine whether to allow unparsed flag access or not."""
+    if _UNPARSED_FLAG_ACCESS_ENV_NAME in os.environ:
+      # We've been told explicitly what to do.
+      allow_unparsed_flag_access = (
+          os.getenv(_UNPARSED_FLAG_ACCESS_ENV_NAME) == '1')
+    elif self.__dict__['__reset_called']:
+      # Raise exception if .Reset() was called. This mostly happens in tests.
+      allow_unparsed_flag_access = False
+    elif _helpers.IsRunningTest():
+      # Staged "rollout", based on name of the flag so that we don't break
+      # everyone.  Hashing the flag is a way of choosing a random but
+      # consistent subset of flags to lock down which we can make larger
+      # over time.
+      flag_percentile = (
+          struct.unpack('<I', hashlib.md5(name).digest()[:4])[0] % 100)
+      allow_unparsed_flag_access = (
+          _UNPARSED_ACCESS_DISABLED_PERCENT < flag_percentile)
+    else:
+      allow_unparsed_flag_access = True
+    return allow_unparsed_flag_access
+
   def __getattr__(self, name):
     """Retrieves the 'value' attribute of the flag --name."""
     fl = self.FlagDict()
@@ -370,35 +402,24 @@ class FlagValues(object):
     if self.__dict__['__flags_parsed'] or fl[name].present:
       return fl[name].value
     else:
-      # Trying to use the flag before FlagValues object got a chance to parse
-      # arguments.
-      # Doing that results in __getattr__ returning default value of the flag,
-      # no matter what was given in the arguments.
-
-      # Note: if you are using hasattr() and seeing this error, please use
-      # 'flag_name not in FLAGS.FlagDict()' instead of 'hasattr(flag_name)'.
-      # Unfortunately hasattr() implemented via calling getattr and there's no
-      # reliable way to determine hasattr() vs getattr().
-      try:
-        error_message = (
-            'Trying to access flag %s before flags were parsed.' % name)
+      error_message = (
+          'Trying to access flag %s before flags were parsed.' % name)
+      if self._IsUnparsedFlagAccessAllowed(name):
+        # Print warning to stderr. Messages in logs are often ignored/unnoticed.
         warnings.warn(
             error_message + ' This will raise an exception in the future.',
             RuntimeWarning,
             stacklevel=2)
         traceback.print_stack()
-        raise exceptions.UnparsedFlagAccessError(error_message)
-      except exceptions.UnparsedFlagAccessError:
-        if self.__dict__['__reset_called']:
-          # Raise exception if .Reset() was called. This mostly happens in tests
-          # and very hard to fix via automated test, so we rather make those
-          # tests fail.
-          raise
-        elif os.getenv('GFLAGS_ALLOW_UNPARSED_FLAG_ACCESS', '1') == '1':
+        # Force logging.exception() to behave realistically, but don't propagate
+        # exception up. Allow flag value to be returned (for now).
+        try:
+          raise exceptions.UnparsedFlagAccessError(error_message)
+        except exceptions.UnparsedFlagAccessError:
           logging.exception(error_message)
-          return fl[name].value
-        else:
-          raise
+        return fl[name].value
+      else:
+        raise exceptions.UnparsedFlagAccessError(error_message)
 
   def __setattr__(self, name, value):
     """Sets the 'value' attribute of the flag --name."""
