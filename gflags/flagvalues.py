@@ -386,7 +386,7 @@ class FlagValues(object):
       flag_percentile = (
           struct.unpack('<I', hashlib.md5(name).digest()[:4])[0] % 100)
       allow_unparsed_flag_access = (
-          _UNPARSED_ACCESS_DISABLED_PERCENT < flag_percentile)
+          _UNPARSED_ACCESS_DISABLED_PERCENT <= flag_percentile)
     else:
       allow_unparsed_flag_access = True
     return allow_unparsed_flag_access
