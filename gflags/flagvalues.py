@@ -383,8 +383,9 @@ class FlagValues(object):
       # everyone.  Hashing the flag is a way of choosing a random but
       # consistent subset of flags to lock down which we can make larger
       # over time.
+      name_bytes = name.encode('utf8') if not isinstance(name, bytes) else name
       flag_percentile = (
-          struct.unpack('<I', hashlib.md5(name).digest()[:4])[0] % 100)
+          struct.unpack('<I', hashlib.md5(name_bytes).digest()[:4])[0] % 100)
       allow_unparsed_flag_access = (
           _UNPARSED_ACCESS_DISABLED_PERCENT <= flag_percentile)
     else:
