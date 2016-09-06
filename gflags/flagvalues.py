@@ -889,42 +889,6 @@ class FlagValues(object):
     else:
       return default
 
-  def ShortestUniquePrefixes(self, fl):
-    """Returns: dictionary; maps flag names to their shortest unique prefix."""
-    # Sort the list of flag names
-    sorted_flags = []
-    for name, flag in fl.items():
-      sorted_flags.append(name)
-      if flag.boolean:
-        sorted_flags.append('no%s' % name)
-    sorted_flags.sort()
-
-    # For each name in the sorted list, determine the shortest unique
-    # prefix by comparing itself to the next name and to the previous
-    # name (the latter check uses cached info from the previous loop).
-    shortest_matches = {}
-    prev_idx = 0
-    for flag_idx in xrange(len(sorted_flags)):
-      curr = sorted_flags[flag_idx]
-      if flag_idx == (len(sorted_flags) - 1):
-        next_flag = None
-      else:
-        next_flag = sorted_flags[flag_idx+1]
-        next_flag_len = len(next_flag)
-      for curr_idx in xrange(len(curr)):
-        if (next_flag is None
-            or curr_idx >= next_flag_len
-            or curr[curr_idx] != next_flag[curr_idx]):
-          # curr longer than next or no more chars in common
-          shortest_matches[curr] = curr[:max(prev_idx, curr_idx) + 1]
-          prev_idx = curr_idx
-          break
-      else:
-        # curr shorter than (or equal to) next
-        shortest_matches[curr] = curr
-        prev_idx = curr_idx + 1  # next will need at least one more char
-    return shortest_matches
-
   def __IsFlagFileDirective(self, flag_string):
     """Checks whether flag_string contain a --flagfile=<foo> directive."""
     if isinstance(flag_string, type('')):
