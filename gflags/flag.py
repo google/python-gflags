@@ -273,7 +273,6 @@ class BooleanFlag(Flag):
   def __init__(self, name, default, help, short_name=None, **args):  # pylint: disable=redefined-builtin
     p = argument_parser.BooleanParser()
     Flag.__init__(self, p, None, name, default, help, short_name, 1, **args)
-    if not self.help: self.help = 'a boolean value'
 
 
 class EnumFlag(Flag):
@@ -285,11 +284,6 @@ class EnumFlag(Flag):
     p = argument_parser.EnumParser(enum_values, case_sensitive)
     g = argument_parser.ArgumentSerializer()
     Flag.__init__(self, p, g, name, default, help, short_name, **args)
-    if not self.help:
-      if case_sensitive:
-        self.help = 'an enum string'
-      else:
-        self.help = 'a case-insensitive enum string'
     self.help = '<%s>: %s' % ('|'.join(enum_values), self.help)
 
   def _WriteCustomInfoInXMLFormat(self, outfile, indent):
