@@ -136,21 +136,21 @@ def RegisterValidator(flag_name,
   The constraint is validated when flags are initially parsed, and after each
   change of the corresponding flag's value.
   Args:
-    flag_name: string, name of the flag to be checked.
-    checker: method to validate the flag.
-      input  - value of the corresponding flag (string, boolean, etc.
-        This value will be passed to checker by the library). See file's
-        docstring for examples.
+    flag_name: str, Name of the flag to be checked.
+    checker: callable, A function to validate the flag.
+      input - A single positional argument: The value of the corresponding
+        flag (string, boolean, etc.  This value will be passed to checker
+        by the library).
       output - Boolean.
         Must return True if validator constraint is satisfied.
         If constraint is not satisfied, it should either return False or
           raise gflags_validators.Error(desired_error_message).
-    message: error text to be shown to the user if checker returns False.
+    message: Error text to be shown to the user if checker returns False.
       If checker raises gflags_validators.Error, message from the raised
         Error will be shown.
-    flag_values: FlagValues
+    flag_values: An optional FlagValues instance to validate against.
   Raises:
-    AttributeError: if flag_name is not registered as a valid flag name.
+    AttributeError: If flag_name is not registered as a valid flag name.
   """
   flag_values.AddValidator(gflags_validators.SimpleValidator(flag_name,
                                                             checker,
@@ -163,7 +163,7 @@ def Validator(flag_name, message='Flag validation failed', flag_values=FLAGS):
   Registers the decorated function as a validator for flag_name, e.g.
 
   @gflags.Validator('foo')
-  def _CheckFoo(input):
+  def _CheckFoo(foo):
     ...
 
   See RegisterValidator() for the specification of checker function.
