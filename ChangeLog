@@ -1,3 +1,9 @@
+Fri Sep 09 00:00:01 2016  Google Inc. <google-gflags@googlegroups.com>
+
+  * python-gflags: version 3.0.7.
+  * Removed the unused method ShortestUniquePrefixes.
+  * Removed _GetCallingModule function alias.
+
 Fri Aug 05 00:00:01 2016  Google Inc. <google-gflags@googlegroups.com>
 
   * python-gflags: version 3.0.6
