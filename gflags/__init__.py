@@ -52,6 +52,7 @@ import getopt
 import os
 import re
 import sys
+import types
 import warnings
 
 from gflags import _helpers
@@ -413,12 +414,8 @@ def ADOPT_module_key_flags(  # pylint: disable=g-bad-name
     FlagsError: When given an argument that is a module name (a
     string), instead of a module object.
   """
-  # NOTE(salcianu): an even better test would be if not
-  # isinstance(module, types.ModuleType) but I didn't want to import
-  # types for such a tiny use.
-  if isinstance(module, str):
-    raise FlagsError('Received module name %s; expected a module object.'
-                     % module)
+  if not isinstance(module, types.ModuleType):
+    raise FlagsError('Expected a module object, not %r.' % (module,))
   # TODO(vrusinov): _GetKeyFlagsForModule should be public.
   _InternalDeclareKeyFlags(
       [f.name for f in flag_values._GetKeyFlagsForModule(module.__name__)],  # pylint: disable=protected-access
