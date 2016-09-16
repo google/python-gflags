@@ -51,13 +51,12 @@ class CantOpenFlagFileError(FlagsError):
   """Raised if flagfile fails to open: doesn't exist, wrong permissions, etc."""
 
 
-class DuplicateFlagCannotPropagateNoneToSwig(DuplicateFlag):
-  """Special case of DuplicateFlag -- SWIG flag value can't be set to None.
+class DuplicateFlagCannotPropagateNoneToSwig(FlagsError):
+  """Raised when redefining a SWIG flag and the default value is None.
 
-  This can be raised when a duplicate flag is created. Even if allow_override is
-  True, we still abort if the new value is None, because it's currently
-  impossible to pass None default value back to SWIG. See FlagValues.SetDefault
-  for details.
+  It's raised when redefining a SWIG flag with allow_override=True and the
+  default value is None. Because it's currently impossible to pass None default
+  value back to SWIG. See FlagValues.SetDefault for details.
   """
 
 
