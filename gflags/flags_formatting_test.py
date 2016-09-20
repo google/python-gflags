@@ -87,44 +87,34 @@ class FlagsUnitTest(unittest.TestCase):
     self.assertEqual('a\n b\n c', gflags.TextWrap('a\nb\nc', 80, ' ', ''))
 
     # tabs
-    self.assertEqual('a\n bxc',
-                     gflags.TextWrap('a\nb\tc', 80, ' ', '', 'x'))
-    self.assertEqual('a\n b c',
-                     gflags.TextWrap('a\nb\tc', 80, ' ', '', ' '))
-    self.assertEqual('a\n b  c',
-                     gflags.TextWrap('a\nb\tc', 80, ' ', '', '  '))
+    self.assertEqual('a\n b   c',
+                     gflags.TextWrap('a\nb\tc', 80, ' ', ''))
+    self.assertEqual('a\n bb  c',
+                     gflags.TextWrap('a\nbb\tc', 80, ' ', ''))
+    self.assertEqual('a\n bbb c',
+                     gflags.TextWrap('a\nbbb\tc', 80, ' ', ''))
+    self.assertEqual('a\n bbbb    c',
+                     gflags.TextWrap('a\nbbbb\tc', 80, ' ', ''))
     self.assertEqual('a\n b\n c\n d',
-                     gflags.TextWrap('a\nb\tc\td', 3, ' ', '', '  '))
+                     gflags.TextWrap('a\nb\tc\td', 3, ' ', ''))
     self.assertEqual('a\n b\n c\n d',
-                     gflags.TextWrap('a\nb\tc\td', 4, ' ', '', '  '))
-    self.assertEqual('a\n b  c\n d',
-                     gflags.TextWrap('a\nb\tc\td', 5, ' ', '', '  '))
-    self.assertEqual('a\n b  c\n d',
-                     gflags.TextWrap('a\nb\tc\td', 6, ' ', '', '  '))
-    self.assertEqual('a\n b  c\n d',
-                     gflags.TextWrap('a\nb\tc\td', 7, ' ', '', '  '))
-    self.assertEqual('a\n b  c  d',
-                     gflags.TextWrap('a\nb\tc\td', 8, ' ', '', '  '))
+                     gflags.TextWrap('a\nb\tc\td', 4, ' ', ''))
+    self.assertEqual('a\n b\n c\n d',
+                     gflags.TextWrap('a\nb\tc\td', 5, ' ', ''))
+    self.assertEqual('a\n b   c\n d',
+                     gflags.TextWrap('a\nb\tc\td', 6, ' ', ''))
+    self.assertEqual('a\n b   c\n d',
+                     gflags.TextWrap('a\nb\tc\td', 7, ' ', ''))
+    self.assertEqual('a\n b   c\n d',
+                     gflags.TextWrap('a\nb\tc\td', 8, ' ', ''))
+    self.assertEqual('a\n b   c\n d',
+                     gflags.TextWrap('a\nb\tc\td', 9, ' ', ''))
+    self.assertEqual('a\n b   c   d',
+                     gflags.TextWrap('a\nb\tc\td', 10, ' ', ''))
 
     # multiple tabs
-    self.assertEqual('a    c',
-                     gflags.TextWrap('a\t\tc', 80, ' ', '', '  '))
-    self.assertEqual('axxxxc',
-                     gflags.TextWrap('a\t\tc', 80, ' ', '', 'xx'))
-
-    # tabs default size
-    self.assertEqual('a\n b    c',
-                     gflags.TextWrap('a\nb\tc', 80, ' ', ''))
-    self.assertEqual('a\n b',
-                     gflags.TextWrap('a\n\tb', 80, ' ', ''))
-    self.assertEqual('a    b',
-                     gflags.TextWrap('a\tb', 80, ' ', ''))
-
-    # no tabs
-    self.assertEqual('a\n b c',
-                     gflags.TextWrap('a\nb\tc', 80, ' ', '', None))
-    self.assertEqual('a\n b',
-                     gflags.TextWrap('a\n\tb', 80, ' ', '', None))
+    self.assertEqual('a       c',
+                     gflags.TextWrap('a\t\tc', 80, ' ', ''))
 
     _helpers._DEFAULT_HELP_WIDTH = default_help_width  # restore
 

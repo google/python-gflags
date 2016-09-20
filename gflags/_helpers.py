@@ -279,11 +279,11 @@ def _DamerauLevenshtein(a, b):
   return Distance(a, b)
 
 
-def TextWrap(text, length=None, indent='', firstline_indent=None, tabs='    '):
+def TextWrap(text, length=None, indent='', firstline_indent=None):
   """Wraps a given text to a maximum line length and returns it.
 
-  We turn lines that only contain whitespace into empty lines. We keep new
-  lines.
+  It turns lines that only contain whitespace into empty lines, keeps new lines,
+  and expands tabs using 4 spaces.
 
   Args:
     text:             str, Text to wrap.
@@ -291,7 +291,6 @@ def TextWrap(text, length=None, indent='', firstline_indent=None, tabs='    '):
                       If this is None then use GetHelpWidth()
     indent:           str, Indent for all but first line.
     firstline_indent: str, Indent for first line; if None, fall back to indent.
-    tabs:             ste, Replacement for tabs.
 
   Returns:
     Wrapped text.
@@ -312,11 +311,7 @@ def TextWrap(text, length=None, indent='', firstline_indent=None, tabs='    '):
   if len(firstline_indent) >= length:
     raise ValueError('Length of first line indent exceeds length')
 
-  # TODO(vrusinov): tabs param is not used in flags, remove it altogether and
-  # let textwrap use expandtabs().
-  if tabs is None:
-    tabs = ' '
-  text = text.replace('\t', tabs)
+  text = text.expandtabs(4)
 
   result = []
   # Create one wrapper for the first paragraph and one for subsequent
