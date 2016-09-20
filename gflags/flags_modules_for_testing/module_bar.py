@@ -127,7 +127,7 @@ def ExecuteCode(code, global_dict):
   """
   # Indeed, using exec generates a lint warning.  But some user code
   # actually uses exec, and we have to test for it ...
-  exec code in global_dict  # pylint: disable=exec-used
+  exec(code, global_dict)  # pylint: disable=exec-used
 
 
 def DisclaimKeyFlags():

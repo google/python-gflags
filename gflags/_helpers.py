@@ -31,7 +31,6 @@
 """Helper functions for //gflags."""
 
 import collections
-import itertools
 import os
 import re
 import struct
@@ -49,6 +48,7 @@ except ImportError:
 
 # pylint: disable=g-import-not-at-top
 import gflags.third_party.pep257 as pep257
+import six
 
 
 _DEFAULT_HELP_WIDTH = 80  # Default width of help output.
@@ -354,7 +354,7 @@ def FlagDictToArgs(flag_map):
   Yields:
     sequence of string suitable for a subprocess execution.
   """
-  for key, value in flag_map.iteritems():
+  for key, value in six.iteritems(flag_map):
     if value is None:
       yield '--%s' % key
     elif isinstance(value, bool):
@@ -368,7 +368,7 @@ def FlagDictToArgs(flag_map):
     else:
       # Now we attempt to deal with collections.
       try:
-        yield '--%s=%s' % (key, ','.join(itertools.imap(str, value)))
+        yield '--%s=%s' % (key, ','.join(str(item) for item in value))
       except TypeError:
         # Default case.
         yield '--%s=%s' % (key, value)

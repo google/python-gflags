@@ -40,6 +40,7 @@ setup(name='python-gflags',
       url='https://github.com/google/python-gflags',
       packages=['gflags', 'gflags.third_party', 'gflags.third_party.pep257'],
       data_files=[('bin', ['gflags2man.py'])],
+      requires=['six'],
       classifiers=[
           'Programming Language :: Python :: 2 :: Only',
           'Programming Language :: Python :: 2.7',

@@ -55,6 +55,8 @@ import sys
 import types
 import warnings
 
+import six
+
 from gflags import _helpers
 from gflags import argument_parser
 from gflags import exceptions
@@ -420,15 +422,15 @@ def ADOPT_module_key_flags(  # pylint: disable=g-bad-name
   _InternalDeclareKeyFlags(
       [f.name for f in flag_values._GetKeyFlagsForModule(module.__name__)],  # pylint: disable=protected-access
       flag_values=flag_values)
-  # If module is this flag module, take _SPECIAL_FLAGS into account.
+  # If module is this flag module, take _helpers._SPECIAL_FLAGS into account.
   if module == _helpers.GetModuleObjectAndName(globals())[0]:
     _InternalDeclareKeyFlags(
         # As we associate flags with _GetCallingModuleObjectAndName(), the
         # special flags defined in this module are incorrectly registered with
         # a different module.  So, we can't use _GetKeyFlagsForModule.
-        # Instead, we take all flags from _SPECIAL_FLAGS (a private
+        # Instead, we take all flags from _helpers._SPECIAL_FLAGS (a private
         # FlagValues, where no other module should register flags).
-        [f.name for f in _helpers.SPECIAL_FLAGS.FlagDict().itervalues()],
+        [f.name for f in six.itervalues(_helpers.SPECIAL_FLAGS.FlagDict())],
         flag_values=_helpers.SPECIAL_FLAGS,
         key_flag_values=flag_values)
 

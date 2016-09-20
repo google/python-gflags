@@ -30,10 +30,11 @@
 
 """Contains base classes used to parse and convert arguments."""
 
-import cStringIO
 import csv
+import io
 import string
 
+import six
 
 from gflags import _helpers
 
@@ -325,16 +326,20 @@ class CsvListSerializer(ArgumentSerializer):
 
   def Serialize(self, value):
     """Serialize a list as a string, if possible, or as a unicode string."""
-    output = cStringIO.StringIO()
-    writer = csv.writer(output)
-
-    # csv.writer doesn't accept unicode, so we convert to UTF-8.
-    encoded_value = [unicode(x).encode('utf-8') for x in value]
-    writer.writerow(encoded_value)
+    if six.PY2:
+      # In Python2 csv.writer doesn't accept unicode, so we convert to UTF-8.
+      output = io.BytesIO()
+      csv.writer(output).writerow([unicode(x).encode('utf-8') for x in value])
+      serialized_value = output.getvalue().decode('utf-8').strip()
+    else:
+      # In Python3 csv.writer expects a text stream.
+      output = io.StringIO()
+      csv.writer(output).writerow([str(x) for x in value])
+      serialized_value = output.getvalue().strip()
 
     # We need the returned value to be pure ascii or Unicodes so that
     # when the xml help is generated they are usefully encodable.
-    return _helpers.StrOrUnicode(output.getvalue().strip().decode('utf-8'))
+    return _helpers.StrOrUnicode(serialized_value)
 
 
 class BaseListParser(ArgumentParser):

@@ -30,7 +30,7 @@ class FlagsUnitTest(unittest.TestCase):
     # Generate a string with length 40, no spaces
     text = ''
     expect = []
-    for n in xrange(4):
+    for n in range(4):
       line = str(n)
       line += '123456789'
       text += line
@@ -62,7 +62,7 @@ class FlagsUnitTest(unittest.TestCase):
               13: ['a b c d e f g', 'h'],
               14: ['a b c d e f g', 'h'],
               15: ['a b c d e f g h']}
-    for width, exp in expect.iteritems():
+    for width, exp in expect.items():
       self.assertEqual(exp, gflags.TextWrap(input_value, width).split('\n'))
 
     # We turn lines with only whitespace into empty lines
@@ -168,18 +168,18 @@ class FlagsUnitTest(unittest.TestCase):
     # Test the general outline of the converted docs
     lines = doc.splitlines()
     self.assertEqual(17, len(lines))
-    empty_lines = [index for index in xrange(len(lines)) if not lines[index]]
+    empty_lines = [index for index in range(len(lines)) if not lines[index]]
     self.assertEqual([1, 3, 5, 8, 12, 15], empty_lines)
     # test that some starting prefix is kept
-    flags_lines = [index for index in xrange(len(lines))
+    flags_lines = [index for index in range(len(lines))
                    if lines[index].startswith('     FLAGS')]
     self.assertEqual([7, 10, 11], flags_lines)
     # but other, especially common space has been removed
-    space_lines = [index for index in xrange(len(lines))
+    space_lines = [index for index in range(len(lines))
                    if lines[index] and lines[index][0].isspace()]
     self.assertEqual([7, 10, 11, 14], space_lines)
     # No right space was kept
-    rspace_lines = [index for index in xrange(len(lines))
+    rspace_lines = [index for index in range(len(lines))
                     if lines[index] != lines[index].rstrip()]
     self.assertEqual([], rspace_lines)
     # test double spaces are kept

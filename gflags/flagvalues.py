@@ -37,6 +37,8 @@ import sys
 import traceback
 import warnings
 
+import six
+
 from gflags import _helpers
 from gflags import exceptions
 from gflags import flag as _flag
@@ -256,7 +258,7 @@ class FlagValues(object):
       If no such module exists (i.e. no flag with this name exists),
       we return default.
     """
-    for module, flags in self.FlagsByModuleDict().iteritems():
+    for module, flags in six.iteritems(self.FlagsByModuleDict()):
       for flag in flags:
         if flag.name == flagname or flag.short_name == flagname:
           return module
@@ -275,7 +277,7 @@ class FlagValues(object):
       If no such module exists (i.e. no flag with this name exists),
       we return default.
     """
-    for module_id, flags in self.FlagsByModuleIdDict().iteritems():
+    for module_id, flags in six.iteritems(self.FlagsByModuleIdDict()):
       for flag in flags:
         if flag.name == flagname or flag.short_name == flagname:
           return module_id
@@ -287,7 +289,7 @@ class FlagValues(object):
     Args:
       flag_values: registry to copy from
     """
-    for flag_name, flag in flag_values.FlagDict().iteritems():
+    for flag_name, flag in six.iteritems(flag_values.FlagDict()):
       # Each flags with shortname appears here twice (once under its
       # normal name, and again with its short name).  To prevent
       # problems (DuplicateFlagError) with double flag registration, we
@@ -438,7 +440,7 @@ class FlagValues(object):
 
   def _AssertAllValidators(self):
     all_validators = set()
-    for flag in self.FlagDict().itervalues():
+    for flag in six.itervalues(self.FlagDict()):
       for validator in flag.validators:
         all_validators.add(validator)
     self._AssertValidators(all_validators)
@@ -533,7 +535,7 @@ class FlagValues(object):
         flags.
       flag_obj: A flag object.
     """
-    for unused_module, flags_in_module in flags_by_module_dict.iteritems():
+    for unused_module, flags_in_module in six.iteritems(flags_by_module_dict):
       # while (as opposed to if) takes care of multiple occurrences of a
       # flag in the list for the same module.
       while flag_obj in flags_in_module:
