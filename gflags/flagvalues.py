@@ -413,13 +413,12 @@ class FlagValues(object):
             error_message + ' This will raise an exception in the future.',
             RuntimeWarning,
             stacklevel=2)
-        traceback.print_stack()
         # Force logging.exception() to behave realistically, but don't propagate
         # exception up. Allow flag value to be returned (for now).
         try:
           raise exceptions.UnparsedFlagAccessError(error_message)
         except exceptions.UnparsedFlagAccessError:
-          logging.exception(error_message)
+            logging.exception(error_message)
         return fl[name].value
       else:
         raise exceptions.UnparsedFlagAccessError(error_message)
