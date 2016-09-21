@@ -120,6 +120,9 @@ class FlagValues(object):
     # Bool: True if Reset() was called.
     self.__dict__['__reset_called'] = False
 
+    # None or Method(name, value) to call from __setattr__ for an unknown flag.
+    self.__dict__['__set_unknown'] = None
+
     # Set if we should use new style gnu_getopt rather than getopt when parsing
     # the args.  Only possible with Python 2.3+
     self.UseGnuGetOpt(False)
@@ -283,6 +286,34 @@ class FlagValues(object):
           return module_id
     return default
 
+  def RegisterUnknownFlagSetter(self, setter):
+    """Allow set default values for undefined flags.
+
+    Args:
+      setter: Method(name, value)->bool to call to __setattr__ an unknown flag.
+        Must return True for success or False for an error.
+    """
+    self.__dict__['__set_unknown'] = setter
+
+  def _SetUnknownFlag(self, name, value):
+    """Returns value if setting flag |name| to |value| returned True.
+
+    May raise UnrecognizedFlagError or IllegalFlagValue.
+
+    Args:
+      name: Name of the flag to set.
+      value: Value to set.
+
+    Returns:
+    """
+    try:
+      return self.__dict__['__set_unknown'](name, value)
+    except (KeyError, NameError):
+      raise exceptions.UnrecognizedFlagError(name, value)
+    except ValueError:
+      raise exceptions.IllegalFlagValue('"{1}" is not valid for --{0}'
+                                        .format(name, value))
+
   def AppendFlagValues(self, flag_values):
     """Appends flags registered in another FlagValues instance.
 
@@ -428,6 +459,8 @@ class FlagValues(object):
     fl = self.FlagDict()
     if name in self.__dict__['__hiddenflags']:
       raise AttributeError(name)
+    if name not in fl:
+      return self._SetUnknownFlag(name, value)
     if fl[name].Type() == '[C++]':
       fl[name].parser.Parse(value)
       fl[name].value = value
