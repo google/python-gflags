@@ -90,7 +90,6 @@ DuplicateFlagError = exceptions.DuplicateFlagError
 DuplicateFlagCannotPropagateNoneToSwig = (
     exceptions.DuplicateFlagCannotPropagateNoneToSwig)
 IllegalFlagValue = exceptions.IllegalFlagValue
-UnrecognizedFlag = exceptions.UnrecognizedFlag
 UnrecognizedFlagError = exceptions.UnrecognizedFlagError
 
 # Public functions:
@@ -740,11 +739,11 @@ def DEFINE_alias(name, original_name, flag_values=FLAGS, module_name=None):  # p
 
   Raises:
     gflags.FlagError:
-      UnrecognizedFlag: if the referenced flag doesn't exist.
+      UnrecognizedFlagError: if the referenced flag doesn't exist.
       DuplicateFlag: if the alias name has been used by some existing flag.
   """
   if original_name not in flag_values:
-    raise UnrecognizedFlag('Flag --%s is not defined.' % original_name)
+    raise UnrecognizedFlagError(original_name)
   flag = flag_values[original_name]
 
   class _Parser(ArgumentParser):

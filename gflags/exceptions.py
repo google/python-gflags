@@ -101,18 +101,13 @@ class IllegalFlagValue(FlagsError):
   """The flag command line argument is illegal."""
 
 
-class UnrecognizedFlag(FlagsError):
-  """Raised if a flag is unrecognized."""
+class UnrecognizedFlagError(FlagsError):
+  """Raised if a flag is unrecognized.
 
-
-# An UnrecognizedFlagError conveys more information than an UnrecognizedFlag.
-# Since there are external modules that create DuplicateFlags, the interface to
-# DuplicateFlag shouldn't change.  The flagvalue will be assigned the full value
-# of the flag and its argument, if any, allowing handling of unrecognized flags
-# in an exception handler.
-# If flagvalue is the empty string, then this exception is an due to a
-# reference to a flag that was not already defined.
-class UnrecognizedFlagError(UnrecognizedFlag):
+  Attributes:
+    flagname: Name of the unrecognized flag.
+    flagvalue: Value of the flag, empty if the flag is not defined.
+  """
 
   def __init__(self, flagname, flagvalue='', suggestions=None):
     self.flagname = flagname
@@ -121,7 +116,7 @@ class UnrecognizedFlagError(UnrecognizedFlag):
       tip = '. Did you mean: %s?' % ', '.join(suggestions)
     else:
       tip = ''
-    UnrecognizedFlag.__init__(
+    FlagsError.__init__(
         self, 'Unknown command line flag \'%s\'%s' % (flagname, tip))
 
 
