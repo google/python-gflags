@@ -761,8 +761,10 @@ class FlagValues(object):
     """Resets the values to the point before FLAGS(argv) was called."""
     for f in self.FlagDict().values():
       f.Unparse()
+    # We log this message before marking flags as unparsed to avoid a
+    # problem when the logging library causes flags access.
+    logging.info('Reset() called; flags access will now raise errors.')
     self.__dict__['__flags_parsed'] = False
-    logging.info('Reset() called; flags access will raise errors now.')
     self.__dict__['__reset_called'] = True
 
   def RegisteredFlags(self):
