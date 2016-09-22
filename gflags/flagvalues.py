@@ -286,33 +286,40 @@ class FlagValues(object):
           return module_id
     return default
 
-  def RegisterUnknownFlagSetter(self, setter):
+  def _RegisterUnknownFlagSetter(self, setter):
     """Allow set default values for undefined flags.
 
     Args:
-      setter: Method(name, value)->bool to call to __setattr__ an unknown flag.
-        Must return True for success or False for an error.
+      setter: Method(name, value) to call to __setattr__ an unknown flag.
+        Must raise NameError or ValueError for invalid name/value.
     """
     self.__dict__['__set_unknown'] = setter
 
   def _SetUnknownFlag(self, name, value):
     """Returns value if setting flag |name| to |value| returned True.
 
-    May raise UnrecognizedFlagError or IllegalFlagValue.
-
     Args:
       name: Name of the flag to set.
       value: Value to set.
 
     Returns:
+      Flag value on successful call.
+
+    Raises:
+      UnrecognizedFlagError
+      IllegalFlagValue
     """
-    try:
-      return self.__dict__['__set_unknown'](name, value)
-    except (KeyError, NameError):
-      raise exceptions.UnrecognizedFlagError(name, value)
-    except ValueError:
-      raise exceptions.IllegalFlagValue('"{1}" is not valid for --{0}'
-                                        .format(name, value))
+    setter = self.__dict__['__set_unknown']
+    if setter:
+      try:
+        setter(name, value)
+        return value
+      except (TypeError, ValueError):  # Flag value is not valid.
+        raise exceptions.IllegalFlagValue('"{1}" is not valid for --{0}'
+                                          .format(name, value))
+      except NameError:  # Flag name is not valid.
+        pass
+    raise exceptions.UnrecognizedFlagError(name, value)
 
   def AppendFlagValues(self, flag_values):
     """Appends flags registered in another FlagValues instance.
