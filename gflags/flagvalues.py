@@ -123,8 +123,7 @@ class FlagValues(object):
     # None or Method(name, value) to call from __setattr__ for an unknown flag.
     self.__dict__['__set_unknown'] = None
 
-    # Set if we should use new style gnu_getopt rather than getopt when parsing
-    # the args.  Only possible with Python 2.3+
+    # By default don't use the GNU-style scanning when parsing the args.
     self.UseGnuGetOpt(False)
 
   def UseGnuGetOpt(self, use_gnu_getopt=True):
