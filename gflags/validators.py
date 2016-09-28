@@ -100,6 +100,7 @@ class Validator(object):
     raise NotImplementedError('This method should be overloaded')
 
 
+# TODO(b/31749909): Rename this to SingleFlagValidator.
 class SimpleValidator(Validator):
   """Validator behind RegisterValidator() method.
 
@@ -141,6 +142,7 @@ class SimpleValidator(Validator):
     return flag_values[self.flag_name].value
 
 
+# TODO(b/31749909): Rename this to MultiFlagsValidator.
 class DictionaryValidator(Validator):
   """Validator behind RegisterDictionaryValidator method.
 
@@ -188,6 +190,8 @@ class DictionaryValidator(Validator):
     return self.flag_names
 
 
+# TODO(b/31749909): Remove this class, in favor of
+# gflags.MarkFlagsAsMutualExclusive.
 class MutualExclusionValidator(DictionaryValidator):
   """Validates that only one flag among a group is set.
 

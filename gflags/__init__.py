@@ -190,8 +190,76 @@ def Validator(flag_name, message='Flag validation failed', flag_values=FLAGS):
   return Decorate
 
 
+def RegisterMultiFlagsValidator(flag_names,
+                                multi_flags_checker,
+                                message='Flags validation failed',
+                                flag_values=FLAGS):
+  """Adds a constraint to multiple flags.
+
+  The constraint is validated when flags are initially parsed, and after each
+  change of the corresponding flag's value.
+
+  Args:
+    flag_names: [str], a list of the flag names to be checked.
+    multi_flags_checker: callable, a function to validate the flag.
+        input - dictionary, with keys() being flag_names, and value for each key
+            being the value of the corresponding flag (string, boolean, etc).
+        output - Boolean. Must return True if validator constraint is satisfied.
+            If constraint is not satisfied, it should either return False or
+            raise validators.Error.
+    message: Error text to be shown to the user if checker returns False.
+        If checker raises validators.Error, message from the raised Error will
+        be shown.
+    flag_values: An optional FlagValues instance to validate against.
+
+  Raises:
+    AttributeError: If a flag is not registered as a valid flag name.
+  """
+  flag_values.AddValidator(
+      gflags_validators.DictionaryValidator(flag_names,
+                                           multi_flags_checker,
+                                           message))
+
+
+def MultiFlagsValidator(flag_names,
+                        message='Flag validation failed',
+                        flag_values=FLAGS):
+  """A function decorator for defining a multi-flag validator.
+
+  Registers the decorated function as a validator for flag_names, e.g.
+
+  @gflags.MultiFlagsValidator(['foo', 'bar'])
+  def _CheckFooBar(flags_dict):
+    ...
+
+  See RegisterMultiFlagsValidator() for the specification of checker function.
+
+  Args:
+    flag_names: [str], a list of the flag names to be checked.
+    message: error text to be shown to the user if checker returns False.
+        If checker raises gflags_validators.Error, message from the raised Error
+        will be shown.
+    flag_values: An optional FlagValues instance to validate against.
+
+  Returns:
+    A function decorator that registers its function argument as a validator.
+
+  Raises:
+    AttributeError: If a flag is not registered as a valid flag name.
+  """
+
+  def Decorate(function):
+    RegisterMultiFlagsValidator(flag_names,
+                                function,
+                                message=message,
+                                flag_values=flag_values)
+    return function
+
+  return Decorate
+
+
 def MarkFlagAsRequired(flag_name, flag_values=FLAGS):
-  """Ensure that flag is not None during program execution.
+  """Ensures that flag is not None during program execution.
 
   Registers a flag validator, which will follow usual validator rules.
   Important note: validator will pass for any non-None value, such as False,
@@ -227,7 +295,7 @@ def MarkFlagAsRequired(flag_name, flag_values=FLAGS):
 
 
 def MarkFlagsAsRequired(flag_names, flag_values=FLAGS):
-  """Ensure that flags are not None during program execution.
+  """Ensures that flags are not None during program execution.
 
   Recommended usage:
 
@@ -245,8 +313,30 @@ def MarkFlagsAsRequired(flag_names, flag_values=FLAGS):
     MarkFlagAsRequired(flag_name, flag_values)
 
 
+def MarkFlagsAsMutualExclusive(flag_names, required=False, flag_values=FLAGS):
+  """Ensures that only one flag among flag_names is set.
+
+  Args:
+    flag_names: [str], a list of the flag names to be checked.
+    required: Boolean, if set, exactly one of the flags must be set.
+        Otherwise, it is also valid for none of the flags to be set.
+    flag_values: An optional FlagValues instance to validate against.
+  """
+
+  def ValidateMutualExclusion(flags_dict):
+    flag_count = sum(1 for val in flags_dict.values() if val is not None)
+    if flag_count == 1 or (not required and flag_count == 0):
+      return True
+    message = ('%s one of (%s) must be specified.' %
+               ('Exactly' if required else 'At most', ', '.join(flag_names)))
+    raise gflags_validators.Error(message)
+
+  RegisterMultiFlagsValidator(
+      flag_names, ValidateMutualExclusion, flag_values=flag_values)
+
+
 def _RegisterBoundsValidatorIfNeeded(parser, name, flag_values):
-  """Enforce lower and upper bounds for numeric flags.
+  """Enforces lower and upper bounds for numeric flags.
 
   Args:
     parser: NumericParser (either FloatParser or IntegerParser). Provides lower
@@ -729,7 +819,7 @@ def DEFINE_multi_enum(  # pylint: disable=g-bad-name,redefined-builtin
 
 
 def DEFINE_alias(name, original_name, flag_values=FLAGS, module_name=None):  # pylint: disable=g-bad-name
-  """Define an alias flag for an existing one.
+  """Defines an alias flag for an existing one.
 
   Args:
     name: A string, name of the alias flag.

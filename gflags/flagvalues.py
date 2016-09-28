@@ -336,7 +336,7 @@ class FlagValues(object):
         try:
           self[flag_name] = flag
         except exceptions.DuplicateFlagError:
-          raise exceptions.DuplicateFlagError(
+          raise exceptions.DuplicateFlagError.from_flag(
               flag_name, self, other_flag_values=flag_values)
 
   def RemoveFlagValues(self, flag_values):
@@ -369,12 +369,12 @@ class FlagValues(object):
         # but a different ID, we can stop here because it indicates that the
         # module is simply being imported a subsequent time.
         return
-      raise exceptions.DuplicateFlagError(name, self)
+      raise exceptions.DuplicateFlagError.from_flag(name, self)
     short_name = flag.short_name
     if short_name is not None:
       if (short_name in fl and not flag.allow_override and
           not fl[short_name].allow_override):
-        raise exceptions.DuplicateFlagError(short_name, self)
+        raise exceptions.DuplicateFlagError.from_flag(short_name, self)
       fl[short_name] = flag
     if (name not in fl  # new flag
         or fl[name].using_default_value
