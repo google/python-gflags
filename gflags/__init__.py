@@ -830,7 +830,7 @@ def DEFINE_alias(name, original_name, flag_values=FLAGS, module_name=None):  # p
   Raises:
     gflags.FlagError:
       UnrecognizedFlagError: if the referenced flag doesn't exist.
-      DuplicateFlag: if the alias name has been used by some existing flag.
+      DuplicateFlagError: if the alias name has been used by some existing flag.
   """
   if original_name not in flag_values:
     raise UnrecognizedFlagError(original_name)
