@@ -42,7 +42,6 @@ import six
 from gflags import _helpers
 from gflags import exceptions
 from gflags import flag as _flag
-from gflags import validators as gflags_validators
 
 # Add flagvalues module to disclaimed module ids.
 _helpers.disclaim_module_ids.add(id(sys.modules[__name__]))
@@ -490,7 +489,7 @@ class FlagValues(object):
 
     Asserts validators in the order they were created.
     Args:
-      validators: Iterable(gflags_validators.Validator), validators to be
+      validators: Iterable(validators.Validator), validators to be
         verified
     Raises:
       AttributeError: if validators work with a non-existing flag.
@@ -500,7 +499,7 @@ class FlagValues(object):
         validators, key=lambda validator: validator.insertion_index):
       try:
         validator.Verify(self)
-      except gflags_validators.Error as e:
+      except exceptions.ValidationError as e:
         message = validator.PrintFlagsWithValues(self)
         raise exceptions.IllegalFlagValue('%s: %s' % (message, str(e)))
 
@@ -1200,7 +1199,7 @@ class FlagValues(object):
     """Register new flags validator to be checked.
 
     Args:
-      validator: gflags_validators.Validator
+      validator: validators.Validator
     Raises:
       AttributeError: if validators work with a non-existing flag.
     """

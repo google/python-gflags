@@ -119,3 +119,7 @@ class UnrecognizedFlagError(FlagsError):
 
 class UnparsedFlagAccessError(FlagsError):
   """Attempt to use flag from unparsed FlagValues."""
+
+
+class ValidationError(FlagsError):
+  """Raised if flag validator constraint is not satisfied."""

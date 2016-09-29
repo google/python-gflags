@@ -36,8 +36,11 @@ See 'FLAGS VALIDATORS' in the flags module's docstring for a usage manual.
 __author__ = 'olexiy@google.com (Olexiy Oryeshko)'
 
 
-class Error(Exception):
-  """Thrown If validator constraint is not satisfied."""
+from gflags import exceptions
+
+
+# TODO(yileiyang): Remove this.
+Error = exceptions.ValidationError  # pylint: disable=invalid-name
 
 
 class Validator(object):
@@ -76,7 +79,7 @@ class Validator(object):
     """
     param = self._GetInputToCheckerFunction(flag_values)
     if not self.checker(param):
-      raise Error(self.message)
+      raise exceptions.ValidationError(self.message)
 
   def GetFlagsNames(self):
     """Return the names of the flags checked by this validator.

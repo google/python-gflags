@@ -91,6 +91,7 @@ DuplicateFlagCannotPropagateNoneToSwig = (
     exceptions.DuplicateFlagCannotPropagateNoneToSwig)
 IllegalFlagValue = exceptions.IllegalFlagValue
 UnrecognizedFlagError = exceptions.UnrecognizedFlagError
+ValidationError = exceptions.ValidationError
 
 # Public functions:
 GetHelpWidth = _helpers.GetHelpWidth
@@ -146,9 +147,9 @@ def RegisterValidator(flag_name,
       output - Boolean.
         Must return True if validator constraint is satisfied.
         If constraint is not satisfied, it should either return False or
-          raise gflags_validators.Error(desired_error_message).
+          raise gflags.ValidationError(desired_error_message).
     message: Error text to be shown to the user if checker returns False.
-      If checker raises gflags_validators.Error, message from the raised
+      If checker raises gflags.ValidationError, message from the raised
         Error will be shown.
     flag_values: An optional FlagValues instance to validate against.
   Raises:
@@ -173,7 +174,7 @@ def Validator(flag_name, message='Flag validation failed', flag_values=FLAGS):
   Args:
     flag_name: string, name of the flag to be checked.
     message: error text to be shown to the user if checker returns False.
-      If checker raises gflags_validators.Error, message from the raised
+      If checker raises gflags.ValidationError, message from the raised
         Error will be shown.
     flag_values: FlagValues
   Returns:
@@ -349,7 +350,7 @@ def _RegisterBoundsValidatorIfNeeded(parser, name, flag_values):
     def Checker(value):
       if value is not None and parser.IsOutsideBounds(value):
         message = '%s is not %s' % (value, parser.syntactic_help)
-        raise gflags_validators.Error(message)
+        raise ValidationError(message)
       return True
 
     RegisterValidator(name,
