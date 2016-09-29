@@ -136,14 +136,30 @@ def GetCallingModule():
   return GetCallingModuleObjectAndName().module_name
 
 
-# TODO(vrusinov): we should probably just use
-# from __future__ import unicode_literals.
 def StrOrUnicode(value):
-  """Converts value to a python string or, if necessary, unicode-string."""
+  """Converts a value to a python string.
+
+  Behavior of this function is intentionally different in Python2/3.
+
+  In Python2, the given value is attempted to convert to a str (byte string).
+  If it contains non-ASCII characters, it is converted to a unicode instead.
+
+  In Python3, the given value is always converted to a str (unicode string).
+
+  This behavior reflects the (bad) practice in Python2 to try to represent
+  a string as str as long as it contains ASCII characters only.
+
+  Args:
+    value: An object to be converted to a string.
+
+  Returns:
+    A string representation of the given value. See the description above
+    for its type.
+  """
   try:
     return str(value)
   except UnicodeEncodeError:
-    return unicode(value)
+    return unicode(value)  # Python3 should never come here
 
 
 # TODO(vrusinov): this function must die.
@@ -161,6 +177,8 @@ def _MakeXMLSafe(s):
   s = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x80-\xff]', '', s)
   # Convert non-ascii characters to entities.  Note: requires python >=2.3
   s = s.encode('ascii', 'xmlcharrefreplace')   # u'\xce\x88' -> 'u&#904;'
+  if six.PY3:
+    s = s.decode('ascii')
   return s
 
 
