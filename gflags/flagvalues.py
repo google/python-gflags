@@ -722,6 +722,8 @@ class FlagValues(object):
 
       # --undefok is a special case.
       if name == 'undefok':
+        if known_only:
+          unparsed_args.append(arg)
         value = GetValue()
         undefok.update(v.strip() for v in value.split(','))
         undefok.update('no' + v.strip() for v in value.split(','))
