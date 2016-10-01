@@ -51,6 +51,8 @@ class Flag(object):
     .parser - an ArgumentParser object;
     .serializer - an ArgumentSerializer object;
     .allow_override - the flag may be redefined without raising an error;
+    .allow_override_cpp - the flag may be redefined in C++ without raising an
+                          error, value "transfered" to C++;
     .allow_hide_cpp - the flag may be redefined despite hiding a C++ flag with
                       the same name;
     .using_default_value - the flag value has not been set by user;
@@ -77,8 +79,8 @@ class Flag(object):
 
   def __init__(self, parser, serializer, name, default, help_string,
                short_name=None, boolean=False, allow_override=False,
-               allow_hide_cpp=False, allow_overwrite=True,
-               parse_default=True):
+               allow_override_cpp=False, allow_hide_cpp=False,
+               allow_overwrite=True, parse_default=True):
     self.name = name
 
     if not help_string:
@@ -91,11 +93,16 @@ class Flag(object):
     self.parser = parser
     self.serializer = serializer
     self.allow_override = allow_override
+    self.allow_override_cpp = allow_override_cpp
     self.allow_hide_cpp = allow_hide_cpp
     self.allow_overwrite = allow_overwrite
     self.using_default_value = True
     self.value = None
     self.validators = []
+    if allow_hide_cpp and allow_override_cpp:
+      raise exceptions.FlagsError(
+          "Can't have both allow_hide_cpp (means use Python flag) and "
+          'allow_override_cpp (means use C++ flag after InitGoogle)')
 
     if parse_default:
       self.SetDefault(default)
