@@ -90,10 +90,6 @@ class DuplicateFlagError(FlagsError):
     return cls(msg)
 
 
-# TODO(yileiyang): Remove DuplicateFlag.
-DuplicateFlag = DuplicateFlagError
-
-
 class IllegalFlagValueError(FlagsError):
   """Raised if the flag command line argument is illegal."""
 

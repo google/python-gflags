@@ -81,11 +81,10 @@ _GetMainModule = _helpers.GetMainModule
 _DamerauLevenshtein = _helpers._DamerauLevenshtein  # pylint: disable=protected-access
 
 # Module exceptions:
-# TODO(vrusinov): these should all be renamed to *Error, e.g. DuplicateFlag
-# should be removed in favour of DuplicateFlagError.
+# TODO(vrusinov): these should all be renamed to *Error, e.g. IllegalFlagValue
+# should be removed in favour of IllegalFlagValueError.
 FlagsError = exceptions.FlagsError
 CantOpenFlagFileError = exceptions.CantOpenFlagFileError
-DuplicateFlag = exceptions.DuplicateFlag
 DuplicateFlagError = exceptions.DuplicateFlagError
 DuplicateFlagCannotPropagateNoneToSwig = (
     exceptions.DuplicateFlagCannotPropagateNoneToSwig)
