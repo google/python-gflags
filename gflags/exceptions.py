@@ -94,8 +94,12 @@ class DuplicateFlagError(FlagsError):
 DuplicateFlag = DuplicateFlagError
 
 
-class IllegalFlagValue(FlagsError):
-  """The flag command line argument is illegal."""
+class IllegalFlagValueError(FlagsError):
+  """Raised if the flag command line argument is illegal."""
+
+
+# TODO(yileiyang): Remove IllegalFlagValue.
+IllegalFlagValue = IllegalFlagValueError
 
 
 class UnrecognizedFlagError(FlagsError):

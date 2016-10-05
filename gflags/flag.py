@@ -140,13 +140,13 @@ class Flag(object):
       argument: String, value to be parsed for flag.
     """
     if self.present and not self.allow_overwrite:
-      raise exceptions.IllegalFlagValue(
+      raise exceptions.IllegalFlagValueError(
           'flag --%s=%s: already defined as %s' % (
               self.name, argument, self.value))
     try:
       self.value = self.parser.Parse(argument)
-    except ValueError as e:  # Recast ValueError as IllegalFlagValue.
-      raise exceptions.IllegalFlagValue(
+    except ValueError as e:  # Recast ValueError as IllegalFlagValueError.
+      raise exceptions.IllegalFlagValueError(
           'flag --%s=%s: %s' % (self.name, argument, e))
     self.present += 1
 

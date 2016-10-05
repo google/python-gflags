@@ -89,7 +89,8 @@ DuplicateFlag = exceptions.DuplicateFlag
 DuplicateFlagError = exceptions.DuplicateFlagError
 DuplicateFlagCannotPropagateNoneToSwig = (
     exceptions.DuplicateFlagCannotPropagateNoneToSwig)
-IllegalFlagValue = exceptions.IllegalFlagValue
+IllegalFlagValue = exceptions.IllegalFlagValueError
+IllegalFlagValueError = exceptions.IllegalFlagValueError
 UnrecognizedFlagError = exceptions.UnrecognizedFlagError
 ValidationError = exceptions.ValidationError
 

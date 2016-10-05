@@ -307,7 +307,7 @@ class FlagValues(object):
 
     Raises:
       UnrecognizedFlagError
-      IllegalFlagValue
+      IllegalFlagValueError
     """
     setter = self.__dict__['__set_unknown']
     if setter:
@@ -315,8 +315,8 @@ class FlagValues(object):
         setter(name, value)
         return value
       except (TypeError, ValueError):  # Flag value is not valid.
-        raise exceptions.IllegalFlagValue('"{1}" is not valid for --{0}'
-                                          .format(name, value))
+        raise exceptions.IllegalFlagValueError('"{1}" is not valid for --{0}'
+                                               .format(name, value))
       except NameError:  # Flag name is not valid.
         pass
     raise exceptions.UnrecognizedFlagError(name, value)
@@ -353,7 +353,7 @@ class FlagValues(object):
     """Registers a new flag variable."""
     fl = self.FlagDict()
     if not isinstance(flag, _flag.Flag):
-      raise exceptions.IllegalFlagValue(flag)
+      raise exceptions.IllegalFlagValueError(flag)
     if str is bytes and isinstance(name, unicode):
       # When using Python 2 with unicode_literals, allow it but encode it
       # into the bytes type we require.
@@ -493,7 +493,7 @@ class FlagValues(object):
         verified
     Raises:
       AttributeError: if validators work with a non-existing flag.
-      IllegalFlagValue: if validation fails for at least one validator
+      IllegalFlagValueError: if validation fails for at least one validator
     """
     for validator in sorted(
         validators, key=lambda validator: validator.insertion_index):
@@ -501,7 +501,7 @@ class FlagValues(object):
         validator.Verify(self)
       except exceptions.ValidationError as e:
         message = validator.PrintFlagsWithValues(self)
-        raise exceptions.IllegalFlagValue('%s: %s' % (message, str(e)))
+        raise exceptions.IllegalFlagValueError('%s: %s' % (message, str(e)))
 
   def _FlagIsRegistered(self, flag_obj):
     """Checks whether a Flag object is registered under some name.
@@ -1053,7 +1053,7 @@ class FlagValues(object):
       from any flagfile(s).
 
     Raises:
-      IllegalFlagValue: when --flagfile provided with no argument.
+      IllegalFlagValueError: when --flagfile provided with no argument.
 
     References: Global gflags.FLAG class instance.
 
@@ -1086,7 +1086,8 @@ class FlagValues(object):
         # next arg really is part of this one.
         if current_arg == '--flagfile' or current_arg == '-flagfile':
           if not rest_of_args:
-            raise exceptions.IllegalFlagValue('--flagfile with no argument')
+            raise exceptions.IllegalFlagValueError(
+                '--flagfile with no argument')
           flag_filename = os.path.expanduser(rest_of_args[0])
           rest_of_args = rest_of_args[1:]
         else:
