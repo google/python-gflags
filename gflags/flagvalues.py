@@ -207,6 +207,47 @@ class FlagValues(object):
     if flag not in key_flags:
       key_flags.append(flag)
 
+  def _FlagIsRegistered(self, flag_obj):
+    """Checks whether a Flag object is registered under long name or short name.
+
+    Args:
+      flag_obj: A Flag object.
+
+    Returns:
+      A boolean: True iff flag_obj is registered under long name or short name.
+    """
+    flag_dict = self.FlagDict()
+    # Check whether flag_obj is registered under its long name.
+    name = flag_obj.name
+    if flag_dict.get(name, None) == flag_obj:
+      return True
+    # Check whether flag_obj is registered under its short name.
+    short_name = flag_obj.short_name
+    if (short_name is not None and
+        flag_dict.get(short_name, None) == flag_obj):
+      return True
+    return False
+
+  def _CleanupUnregisteredFlagFromModuleDicts(self, flag_obj):
+    """Cleanup unregistered flags from all module -> [flags] dictionaries.
+
+    If flag_obj is registered under either its long name or short name, it
+    won't be removed from the dictionaries.
+
+    Args:
+      flag_obj: A flag object.
+    """
+    if self._FlagIsRegistered(flag_obj):
+      return
+    for flags_by_module_dict in (self.FlagsByModuleDict(),
+                                 self.FlagsByModuleIdDict(),
+                                 self.KeyFlagsByModuleDict()):
+      for flags_in_module in six.itervalues(flags_by_module_dict):
+        # While (as opposed to if) takes care of multiple occurrences of a
+        # flag in the list for the same module.
+        while flag_obj in flags_in_module:
+          flags_in_module.remove(flag_obj)
+
   def _GetFlagsDefinedByModule(self, module):
     """Returns the list of flags defined by a module.
 
@@ -261,9 +302,16 @@ class FlagValues(object):
       If no such module exists (i.e. no flag with this name exists),
       we return default.
     """
+    registered_flag = self.FlagDict().get(flagname)
+    if registered_flag is None:
+      return default
     for module, flags in six.iteritems(self.FlagsByModuleDict()):
       for flag in flags:
-        if flag.name == flagname or flag.short_name == flagname:
+        # It must compare the flag with the one in FlagDict. This is because a
+        # flag might be overridden only for its long name (or short name),
+        # and only its short name (or long name) is considered registered.
+        if (flag.name == registered_flag.name and
+            flag.short_name == registered_flag.short_name):
           return module
     return default
 
@@ -280,9 +328,16 @@ class FlagValues(object):
       If no such module exists (i.e. no flag with this name exists),
       we return default.
     """
+    registered_flag = self.FlagDict().get(flagname)
+    if registered_flag is None:
+      return default
     for module_id, flags in six.iteritems(self.FlagsByModuleIdDict()):
       for flag in flags:
-        if flag.name == flagname or flag.short_name == flagname:
+        # It must compare the flag with the one in FlagDict. This is because a
+        # flag might be overridden only for its long name (or short name),
+        # and only its short name (or long name) is considered registered.
+        if (flag.name == registered_flag.name and
+            flag.short_name == registered_flag.short_name):
           return module_id
     return default
 
@@ -372,15 +427,24 @@ class FlagValues(object):
         return
       raise exceptions.DuplicateFlagError.from_flag(name, self)
     short_name = flag.short_name
+    # If a new flag overrides an old one, we need to cleanup the old flag's
+    # modules if it's not registered.
+    flags_to_cleanup = set()
     if short_name is not None:
       if (short_name in fl and not flag.allow_override and
           not fl[short_name].allow_override):
         raise exceptions.DuplicateFlagError.from_flag(short_name, self)
+      if short_name in fl and fl[short_name] != flag:
+        flags_to_cleanup.add(fl[short_name])
       fl[short_name] = flag
     if (name not in fl  # new flag
         or fl[name].using_default_value
         or not flag.using_default_value):
+      if name in fl and fl[name] != flag:
+        flags_to_cleanup.add(fl[name])
       fl[name] = flag
+    for f in flags_to_cleanup:
+      self._CleanupUnregisteredFlagFromModuleDicts(f)
 
   def __dir__(self):
     """Returns list of names of all defined flags.
@@ -503,46 +567,20 @@ class FlagValues(object):
         message = validator.PrintFlagsWithValues(self)
         raise exceptions.IllegalFlagValueError('%s: %s' % (message, str(e)))
 
-  def _FlagIsRegistered(self, flag_obj):
-    """Checks whether a Flag object is registered under some name.
-
-    Note: this is non trivial: in addition to its normal name, a flag
-    may have a short name too.  In self.FlagDict(), both the normal and
-    the short name are mapped to the same flag object.  E.g., calling
-    only "del FLAGS.short_name" is not unregistering the corresponding
-    Flag object (it is still registered under the longer name).
-
-    Args:
-      flag_obj: A Flag object.
-
-    Returns:
-      A boolean: True iff flag_obj is registered under some name.
-    """
-    flag_dict = self.FlagDict()
-    # Check whether flag_obj is registered under its long name.
-    name = flag_obj.name
-    if flag_dict.get(name, None) == flag_obj:
-      return True
-    # Check whether flag_obj is registered under its short name.
-    short_name = flag_obj.short_name
-    if (short_name is not None and
-        flag_dict.get(short_name, None) == flag_obj):
-      return True
-    # The flag cannot be registered under any other name, so we do not
-    # need to do a full search through the values of self.FlagDict().
-    return False
-
   def __delattr__(self, flag_name):
     """Deletes a previously-defined flag from a flag object.
 
     This method makes sure we can delete a flag by using
 
-      del flag_values_object.<flag_name>
+      del FLAGS.<flag_name>
 
     E.g.,
 
       gflags.DEFINE_integer('foo', 1, 'Integer flag.')
       del gflags.FLAGS.foo
+
+    If a flag is also registered by its the other name (long name or short
+    name), the other name won't be deleted.
 
     Args:
       flag_name: A string, the name of the flag to be deleted.
@@ -557,28 +595,30 @@ class FlagValues(object):
     flag_obj = fl[flag_name]
     del fl[flag_name]
 
-    if not self._FlagIsRegistered(flag_obj):
-      # If the Flag object indicated by flag_name is no longer
-      # registered (please see the docstring of _FlagIsRegistered), then
-      # we delete the occurrences of the flag object in all our internal
-      # dictionaries.
-      self.__RemoveFlagFromDictByModule(self.FlagsByModuleDict(), flag_obj)
-      self.__RemoveFlagFromDictByModule(self.FlagsByModuleIdDict(), flag_obj)
-      self.__RemoveFlagFromDictByModule(self.KeyFlagsByModuleDict(), flag_obj)
+    self._CleanupUnregisteredFlagFromModuleDicts(flag_obj)
 
-  def __RemoveFlagFromDictByModule(self, flags_by_module_dict, flag_obj):
-    """Removes a flag object from a module -> list of flags dictionary.
+  def _RemoveAllFlagAppearances(self, name):
+    """Removes flag with name for all appearances.
+
+    A flag can be registered with its long name and an optional short name.
+    This method removes both of them. This is different than __delattr__.
 
     Args:
-      flags_by_module_dict: A dictionary that maps module names to lists of
-        flags.
-      flag_obj: A flag object.
+      name: Either flag's long name or short name.
+
+    Raises:
+      UnrecognizedFlagError: When flag name is not found.
     """
-    for unused_module, flags_in_module in six.iteritems(flags_by_module_dict):
-      # while (as opposed to if) takes care of multiple occurrences of a
-      # flag in the list for the same module.
-      while flag_obj in flags_in_module:
-        flags_in_module.remove(flag_obj)
+    flag_dict = self.FlagDict()
+    if name not in flag_dict:
+      raise exceptions.UnrecognizedFlagError(name)
+    flag = flag_dict[name]
+    names_to_remove = {name}
+    names_to_remove.add(flag.name)
+    if flag.short_name:
+      names_to_remove.add(flag.short_name)
+    for n in names_to_remove:
+      self.__delattr__(n)
 
   def SetDefault(self, name, value):
     """Changes the default value (and current value) of the named flag object.

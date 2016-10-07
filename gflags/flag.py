@@ -50,9 +50,11 @@ class Flag(object):
     .present - true if this flag was parsed from command line flags;
     .parser - an ArgumentParser object;
     .serializer - an ArgumentSerializer object;
-    .allow_override - the flag may be redefined without raising an error;
+    .allow_override - the flag may be redefined without raising an error, and
+                      newly defined flag overrides the old one.
     .allow_cpp_override - the flag may be redefined in C++ without raising an
-                          error, value "transfered" to C++;
+                          error, value "transfered" to C++, and the flag is
+                          replaced by the C++ flag after init;
     .allow_hide_cpp - the flag may be redefined despite hiding a C++ flag with
                       the same name;
     .using_default_value - the flag value has not been set by user;
