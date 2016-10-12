@@ -532,12 +532,8 @@ class FlagValues(object):
       raise AttributeError(name)
     if name not in fl:
       return self._SetUnknownFlag(name, value)
-    if fl[name].Type() == '[C++]':
-      fl[name].parser.Parse(value)
-      fl[name].value = value
-    else:
-      fl[name].value = value
-      self._AssertValidators(fl[name].validators)
+    fl[name].value = value
+    self._AssertValidators(fl[name].validators)
     fl[name].using_default_value = False
     return value
 

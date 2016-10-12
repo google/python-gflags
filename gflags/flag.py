@@ -59,7 +59,9 @@ class Flag(object):
                       the same name;
     .using_default_value - the flag value has not been set by user;
     .allow_overwrite - the flag may be parsed more than once without raising
-                       an error, the last set value will be used.
+                       an error, the last set value will be used;
+    .on_value_changed - callable, called after Flag.value is changed with the
+                        flag object as its argument.
 
   The only public method of a 'Flag' object is Parse(), but it is
   typically only called by a 'FlagValues' object.  The Parse() method is
@@ -82,7 +84,7 @@ class Flag(object):
   def __init__(self, parser, serializer, name, default, help_string,
                short_name=None, boolean=False, allow_override=False,
                allow_cpp_override=False, allow_hide_cpp=False,
-               allow_overwrite=True, parse_default=True):
+               allow_overwrite=True, parse_default=True, on_value_changed=None):
     self.name = name
 
     if not help_string:
@@ -98,8 +100,10 @@ class Flag(object):
     self.allow_cpp_override = allow_cpp_override
     self.allow_hide_cpp = allow_hide_cpp
     self.allow_overwrite = allow_overwrite
+    self.on_value_changed = on_value_changed
+
     self.using_default_value = True
-    self.value = None
+    self._value = None
     self.validators = []
     if allow_hide_cpp and allow_cpp_override:
       raise exceptions.FlagsError(
@@ -110,6 +114,17 @@ class Flag(object):
       self.SetDefault(default)
     else:
       self.default = default
+
+  @property
+  def value(self):
+    return self._value
+
+  @value.setter
+  def value(self, value):
+    if self._value != value:
+      self._value = value
+      if self.on_value_changed:
+        self.on_value_changed(self)
 
   def __hash__(self):
     return hash(id(self))
