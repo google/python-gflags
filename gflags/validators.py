@@ -191,30 +191,3 @@ class DictionaryValidator(Validator):
 
   def GetFlagsNames(self):
     return self.flag_names
-
-
-# TODO(b/31749909): Remove this class, in favor of
-# gflags.MarkFlagsAsMutualExclusive.
-class MutualExclusionValidator(DictionaryValidator):
-  """Validates that only one flag among a group is set.
-
-  Validates that of the group of flags passed to the checker function, only one
-  of these flags is not None.
-  """
-
-  def __init__(self, flag_names, required=False):
-    """Constructor.
-
-    Arguments:
-      flag_names: (iter of strings), names of flags that are checked.
-      required: Boolean. If set, exactly one of the flags must be set.
-        Otherwise, it is also valid for none of the flags to be set.
-    """
-    message = ('%s one of (%s) must be specified.' %
-               ('Exactly' if required else 'At most', ', '.join(flag_names)))
-
-    def Checker(flag_dict):
-      flag_count = sum(1 for val in flag_dict.values() if val is not None)
-      return flag_count == 1 or (not required and flag_count == 0)
-
-    super(MutualExclusionValidator, self).__init__(flag_names, Checker, message)
