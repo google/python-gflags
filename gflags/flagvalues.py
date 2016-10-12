@@ -957,7 +957,7 @@ class FlagValues(object):
             '(%s)' % flag.parser.syntactic_help, indent=prefix+'  ')
       output_lines.append(flaghelp)
 
-  def get(self, name, default):  # pylint: disable=invalid-name
+  def get_flag_value(self, name, default):  # pylint: disable=invalid-name
     """Returns the value of a flag (if not None) or a default value.
 
     Args:
@@ -973,6 +973,9 @@ class FlagValues(object):
       return value
     else:
       return default
+
+  # TODO(b/32098517): Remove this.
+  get = get_flag_value
 
   def __IsFlagFileDirective(self, flag_string):
     """Checks whether flag_string contain a --flagfile=<foo> directive."""
