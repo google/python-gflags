@@ -73,6 +73,13 @@ _helpers.disclaim_module_ids.add(id(sys.modules[__name__]))
 # suppress warning for whole block:
 # pylint: disable=invalid-name
 
+# Following aliases required because there is a lot of code that uses private
+# functions from here.
+# TODO(vrusinov): this code needs to be fixed and aliases needs to be removed.
+_GetModuleObjectAndName = _helpers.GetModuleObjectAndName
+_GetMainModule = _helpers.GetMainModule
+_DamerauLevenshtein = _helpers._DamerauLevenshtein  # pylint: disable=protected-access
+
 # Module exceptions:
 # TODO(vrusinov): these should all be renamed to *Error, e.g. IllegalFlagValue
 # should be removed in favour of IllegalFlagValueError.
@@ -533,7 +540,7 @@ def DISCLAIM_key_flags():  # pylint: disable=g-bad-name
   any more flags.  This function will affect all FlagValues objects.
   """
   globals_for_caller = sys._getframe(1).f_globals  # pylint: disable=protected-access
-  module, _ = _helpers.GetModuleObjectAndName(globals_for_caller)
+  module, _ = _GetModuleObjectAndName(globals_for_caller)
   _helpers.disclaim_module_ids.add(id(module))
 
 
