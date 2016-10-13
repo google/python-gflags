@@ -117,6 +117,8 @@ class Flag(object):
 
   @property
   def value(self):
+    if self.parser.Type() == '[C++]':
+      self._value = self.parser.Get()
     return self._value
 
   @value.setter
