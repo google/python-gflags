@@ -354,8 +354,6 @@ def _RegisterBoundsValidatorIfNeeded(parser, name, flag_values):
 # The DEFINE functions are explained in more details in the module doc string.
 
 
-# TODO(vrusinov): 'help' is redefined builtin and should be renamed to helptext
-# (here and in other DEFINE_* functions).
 def DEFINE(parser, name, default, help, flag_values=FLAGS, serializer=None,  # pylint: disable=redefined-builtin
            module_name=None, **args):
   """Registers a generic Flag object.
