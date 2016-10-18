@@ -220,27 +220,6 @@ def GetHelpWidth():
     return _DEFAULT_HELP_WIDTH
 
 
-def GetMainModule():
-  """Get the program name.  Do no use, this function is likely to be deleted.
-
-  Returns:
-    str, The name of the program.
-  """
-  # This is a poorly named internal API.  In the past it used to go crazy and
-  # walk up the sys._getframe stack until it hit the top and call
-  # GetModuleObjectAndName on that...  Meanwhile GetModuleObjectAndName was
-  # always returning sys.argv[0] instead of anything related to the module as
-  # the name of the top module is always __main__.  That logic was tripping
-  # up an embedded Python launcher that uses a tiny module above __main__
-  # to read, compile and exec __main__.  Solution: Simplify to sys.argv[0]!
-  #
-  # Flags only uses this to determine what flags to show in the short help
-  # text and what to show as the program name.
-  #
-  # TODO(vrusinov): Delete this function entirely now that it is trivial.
-  return sys.argv[0]
-
-
 def GetFlagSuggestions(attempt, longopt_list):
   """Get helpful similar matches for an invalid flag."""
   # Don't suggest on very short strings, or if no longopts are specified.

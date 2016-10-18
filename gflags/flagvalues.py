@@ -853,7 +853,7 @@ class FlagValues(object):
       modules = sorted(flags_by_module)
 
       # Print the help for the main module first, if possible.
-      main_module = _helpers.GetMainModule()
+      main_module = sys.argv[0]
       if main_module in modules:
         modules.remove(main_module)
         modules = [main_module] + modules
@@ -918,7 +918,7 @@ class FlagValues(object):
     Returns:
       string describing the key flags of a module.
     """
-    return self.ModuleHelp(_helpers.GetMainModule())
+    return self.ModuleHelp(sys.argv[0])
 
   def __RenderFlagList(self, flaglist, output_lines, prefix='  '):
     fl = self.FlagDict()
@@ -1224,7 +1224,7 @@ class FlagValues(object):
     _helpers.WriteSimpleXMLElement(outfile, 'usage', usage_doc, indent)
 
     # Get list of key flags for the main module.
-    key_flags = self._GetKeyFlagsForModule(_helpers.GetMainModule())
+    key_flags = self._GetKeyFlagsForModule(sys.argv[0])
 
     # Sort flags by declaring module name and next by flag name.
     flags_by_module = self.FlagsByModuleDict()
