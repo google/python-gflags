@@ -220,34 +220,35 @@ class Flag(object):
     """
     return self.parser.Type()
 
-  def WriteInfoInXMLFormat(self, outfile, module_name, is_key=False, indent=''):
-    """Writes common info about this flag, in XML format.
+  def _CreateXMLDOMElement(self, doc, module_name, is_key=False):
+    """Returns an XML element that contains this flag's information.
 
     This is information that is relevant to all flags (e.g., name,
     meaning, etc.).  If you defined a flag that has some other pieces of
-    info, then please override _WriteCustomInfoInXMLFormat.
+    info, then please override _ExtraXMLInfo.
 
     Please do NOT override this method.
 
     Args:
-      outfile: File object we write to.
+      doc: A minidom.Document, the DOM document it should create nodes from.
       module_name: A string, the name of the module that defines this flag.
       is_key: A boolean, True iff this flag is key for main module.
-      indent: A string that is prepended to each generated line.
+
+    Returns:
+      A minidom.Element instance.
     """
-    outfile.write(indent + '<flag>\n')
-    inner_indent = indent + '  '
+    element = doc.createElement('flag')
     if is_key:
-      _helpers.WriteSimpleXMLElement(outfile, 'key', 'yes', inner_indent)
-    _helpers.WriteSimpleXMLElement(outfile, 'file', module_name, inner_indent)
-    # Print flag features that are relevant for all flags.
-    _helpers.WriteSimpleXMLElement(outfile, 'name', self.name, inner_indent)
+      element.appendChild(_helpers.CreateXMLDOMElement(doc, 'key', 'yes'))
+    element.appendChild(_helpers.CreateXMLDOMElement(doc, 'file', module_name))
+    # Adds flag features that are relevant for all flags.
+    element.appendChild(_helpers.CreateXMLDOMElement(doc, 'name', self.name))
     if self.short_name:
-      _helpers.WriteSimpleXMLElement(outfile, 'short_name', self.short_name,
-                                     inner_indent)
+      element.appendChild(_helpers.CreateXMLDOMElement(
+          doc, 'short_name', self.short_name))
     if self.help:
-      _helpers.WriteSimpleXMLElement(outfile, 'meaning', self.help,
-                                     inner_indent)
+      element.appendChild(_helpers.CreateXMLDOMElement(
+          doc, 'meaning', self.help))
     # The default flag value can either be represented as a string like on the
     # command line, or as a Python object.  We serialize this value in the
     # latter case in order to remain consistent.
@@ -258,26 +259,30 @@ class Flag(object):
         default_serialized = ''
     else:
       default_serialized = self.default
-    _helpers.WriteSimpleXMLElement(outfile, 'default', default_serialized,
-                                   inner_indent)
-    _helpers.WriteSimpleXMLElement(outfile, 'current', self.value, inner_indent)
-    _helpers.WriteSimpleXMLElement(outfile, 'type', self.Type(), inner_indent)
-    # Print extra flag features this flag may have.
-    self._WriteCustomInfoInXMLFormat(outfile, inner_indent)
-    outfile.write(indent + '</flag>\n')
+    element.appendChild(_helpers.CreateXMLDOMElement(
+        doc, 'default', default_serialized))
+    element.appendChild(_helpers.CreateXMLDOMElement(
+        doc, 'current', self.value))
+    element.appendChild(_helpers.CreateXMLDOMElement(doc, 'type', self.Type()))
+    # Adds extra flag features this flag may have.
+    for e in self._ExtraXMLDOMElements(doc):
+      element.appendChild(e)
+    return element
 
-  def _WriteCustomInfoInXMLFormat(self, outfile, indent):
-    """Writes extra info about this flag, in XML format.
+  def _ExtraXMLDOMElements(self, doc):
+    """Returns extra info about this flag in XML.
 
-    "Extra" means "not already printed by WriteInfoInXMLFormat above."
+    "Extra" means "not already included by _CreateXMLDOMElement above."
 
     Args:
-      outfile: File object we write to.
-      indent: A string that is prepended to each generated line.
+      doc: A minidom.Document, the DOM document it should create nodes from.
+
+    Returns:
+      A list of minidom.Element.
     """
     # Usually, the parser knows the extra details about the flag, so
     # we just forward the call to it.
-    self.parser.WriteCustomInfoInXMLFormat(outfile, indent)
+    return self.parser._CustomXMLDOMElements(doc)  # pylint: disable=protected-access
 
 
 class BooleanFlag(Flag):
@@ -309,9 +314,12 @@ class EnumFlag(Flag):
     Flag.__init__(self, p, g, name, default, help, short_name, **args)
     self.help = '<%s>: %s' % ('|'.join(enum_values), self.help)
 
-  def _WriteCustomInfoInXMLFormat(self, outfile, indent):
+  def _ExtraXMLDOMElements(self, doc):
+    elements = []
     for enum_value in self.parser.enum_values:
-      _helpers.WriteSimpleXMLElement(outfile, 'enum_value', enum_value, indent)
+      elements.append(_helpers.CreateXMLDOMElement(
+          doc, 'enum_value', enum_value))
+    return elements
 
 
 class MultiFlag(Flag):
@@ -386,8 +394,10 @@ class MultiFlag(Flag):
   def Type(self):
     return 'multi ' + self.parser.Type()
 
-  def _WriteCustomInfoInXMLFormat(self, outfile, indent):
+  def _ExtraXMLDOMElements(self, doc):
+    elements = []
     if hasattr(self.parser, 'enum_values'):
       for enum_value in self.parser.enum_values:
-        _helpers.WriteSimpleXMLElement(outfile, 'enum_value',
-                                       enum_value, indent)
+        elements.append(_helpers.CreateXMLDOMElement(
+            doc, 'enum_value', enum_value))
+    return elements

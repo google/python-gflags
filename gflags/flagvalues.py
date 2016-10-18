@@ -40,6 +40,7 @@ import struct
 import sys
 import traceback
 import warnings
+from xml.dom import minidom
 
 import six
 
@@ -1208,20 +1209,19 @@ class FlagValues(object):
     Args:
       outfile: File object we write to.  Default None means sys.stdout.
     """
-    outfile = outfile or sys.stdout
+    doc = minidom.Document()
+    all_flag = doc.createElement('AllFlags')
+    doc.appendChild(all_flag)
 
-    outfile.write('<?xml version=\"1.0\"?>\n')
-    outfile.write('<AllFlags>\n')
-    indent = '  '
-    _helpers.WriteSimpleXMLElement(outfile, 'program',
-                                   os.path.basename(sys.argv[0]), indent)
+    all_flag.appendChild(_helpers.CreateXMLDOMElement(
+        doc, 'program', os.path.basename(sys.argv[0])))
 
     usage_doc = sys.modules['__main__'].__doc__
     if not usage_doc:
       usage_doc = '\nUSAGE: %s [flags]\n' % sys.argv[0]
     else:
       usage_doc = usage_doc.replace('%s', sys.argv[0])
-    _helpers.WriteSimpleXMLElement(outfile, 'usage', usage_doc, indent)
+    all_flag.appendChild(_helpers.CreateXMLDOMElement(doc, 'usage', usage_doc))
 
     # Get list of key flags for the main module.
     key_flags = self._GetKeyFlagsForModule(sys.argv[0])
@@ -1235,10 +1235,15 @@ class FlagValues(object):
       flag_list.sort()
       for unused_flag_name, flag in flag_list:
         is_key = flag in key_flags
-        flag.WriteInfoInXMLFormat(outfile, module_name,
-                                  is_key=is_key, indent=indent)
+        all_flag.appendChild(flag._CreateXMLDOMElement(  # pylint: disable=protected-access
+            doc, module_name, is_key=is_key))
 
-    outfile.write('</AllFlags>\n')
+    outfile = outfile or sys.stdout
+    if six.PY2:
+      outfile.write(doc.toprettyxml(indent='  ', encoding='utf-8'))
+    else:
+      outfile.write(
+          doc.toprettyxml(indent='  ', encoding='utf-8').decode('utf-8'))
     outfile.flush()
 
 

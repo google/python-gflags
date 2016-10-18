@@ -66,6 +66,11 @@ _MIN_HELP_WIDTH = 40  # Minimal "sane" width of help output. We assume that any
 # "least_erros >= 0.5".
 _SUGGESTION_ERROR_RATE_THRESHOLD = 0.50
 
+# Characters that cannot appear or are highly discouraged in an XML 1.0
+# document. (See http://www.w3.org/TR/REC-xml/#charsets or
+# https://en.wikipedia.org/wiki/Valid_characters_in_XML#XML_1.0)
+_ILLEGAL_XML_CHARS_REGEX = re.compile(
+    u'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x84\x86-\x9f\ud800-\udfff\ufffe\uffff]')
 
 # This is a set of module ids for the modules that disclaim key flags.
 # This module is explicitly added to this set so that we never consider it to
@@ -162,44 +167,32 @@ def StrOrUnicode(value):
     return unicode(value)  # Python3 should never come here
 
 
-# TODO(vrusinov): this function must die.
-def _MakeXMLSafe(s):
-  """Escapes <, >, and & from s, and removes XML 1.0-illegal chars."""
-  # Note that we cannot use cgi.escape() here since it is not supported by
-  # Python 3.
-  s = s.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-
-  # Remove characters that cannot appear in an XML 1.0 document
-  # (http://www.w3.org/TR/REC-xml/#charsets).
-  #
-  # NOTE: if there are problems with current solution, one may move to
-  # XML 1.1, which allows such chars, if they're entity-escaped (&#xHH;).
-  s = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x80-\xff]', '', s)
-  # Convert non-ascii characters to entities.  Note: requires python >=2.3
-  s = s.encode('ascii', 'xmlcharrefreplace')   # u'\xce\x88' -> 'u&#904;'
-  if six.PY3:
-    s = s.decode('ascii')
-  return s
-
-
-def WriteSimpleXMLElement(outfile, name, value, indent):
-  """Writes a simple XML element.
+def CreateXMLDOMElement(doc, name, value):
+  """Returns an XML DOM element with name and text value.
 
   Args:
-    outfile: File object we write the XML element to.
-    name: A string, the name of XML element.
+    doc: A minidom.Document, the DOM document it should create nodes from.
+    name: A string, the tag of XML element.
     value: A Python object, whose string representation will be used
-      as the value of the XML element.
-    indent: A string, prepended to each line of generated output.
+      as the value of the XML element. Illegal or highly discouraged xml 1.0
+      characters are stripped.
+
+  Returns:
+    An instance of minidom.Element.
   """
-  value_str = StrOrUnicode(value)
+  s = StrOrUnicode(value)
+  if six.PY2 and not isinstance(s, unicode):
+    # Get a valid unicode string.
+    s = s.decode('utf-8', 'ignore')
   if isinstance(value, bool):
     # Display boolean values as the C++ flag library does: no caps.
-    value_str = value_str.lower()
-  # TODO(vrusinov): we should use some lightweight built-in xml library instead
-  # of hand-crafting xml.
-  safe_value_str = _MakeXMLSafe(value_str)
-  outfile.write('%s<%s>%s</%s>\n' % (indent, name, safe_value_str, name))
+    s = s.lower()
+  # Remove illegal xml characters.
+  s = _ILLEGAL_XML_CHARS_REGEX.sub(u'', s)
+
+  e = doc.createElement(name)
+  e.appendChild(doc.createTextNode(s))
+  return e
 
 
 def GetHelpWidth():

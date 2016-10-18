@@ -109,8 +109,16 @@ class ArgumentParser(object):
   def Type(self):
     return 'string'
 
-  def WriteCustomInfoInXMLFormat(self, outfile, indent):
-    pass
+  def _CustomXMLDOMElements(self, doc):  # pylint: disable=unused-argument
+    """Returns a list of XML DOM elements to add additional flag information.
+
+    Args:
+      doc: A minidom.Document, the DOM document it should create nodes from.
+
+    Returns:
+      A list of minidom.Element.
+    """
+    return []
 
 
 class ArgumentSerializer(object):
@@ -136,13 +144,15 @@ class NumericParser(ArgumentParser):
       raise ValueError('%s is not %s' % (val, self.syntactic_help))
     return val
 
-  def WriteCustomInfoInXMLFormat(self, outfile, indent):
+  def _CustomXMLDOMElements(self, doc):
+    elements = []
     if self.lower_bound is not None:
-      _helpers.WriteSimpleXMLElement(outfile, 'lower_bound', self.lower_bound,
-                                     indent)
+      elements.append(_helpers.CreateXMLDOMElement(
+          doc, 'lower_bound', self.lower_bound))
     if self.upper_bound is not None:
-      _helpers.WriteSimpleXMLElement(outfile, 'upper_bound', self.upper_bound,
-                                     indent)
+      elements.append(_helpers.CreateXMLDOMElement(
+          doc, 'upper_bound', self.upper_bound))
+    return elements
 
   def Convert(self, argument):
     """Default implementation: always returns its argument unmodified."""
@@ -400,9 +410,11 @@ class ListParser(BaseListParser):
         raise ValueError('Unable to parse the value %r as a %s: %s'
                          % (argument, self.Type(), e))
 
-  def WriteCustomInfoInXMLFormat(self, outfile, indent):
-    BaseListParser.WriteCustomInfoInXMLFormat(self, outfile, indent)
-    _helpers.WriteSimpleXMLElement(outfile, 'list_separator', repr(','), indent)
+  def _CustomXMLDOMElements(self, doc):
+    elements = super(ListParser, self)._CustomXMLDOMElements(doc)
+    elements.append(_helpers.CreateXMLDOMElement(
+        doc, 'list_separator', repr(',')))
+    return elements
 
 
 class WhitespaceSeparatedListParser(BaseListParser):
@@ -431,12 +443,14 @@ class WhitespaceSeparatedListParser(BaseListParser):
         argument = argument.replace(',', ' ')
       return argument.split()
 
-  def WriteCustomInfoInXMLFormat(self, outfile, indent):
-    BaseListParser.WriteCustomInfoInXMLFormat(self, outfile, indent)
+  def _CustomXMLDOMElements(self, doc):
+    elements = super(WhitespaceSeparatedListParser, self
+                    )._CustomXMLDOMElements(doc)
     separators = list(string.whitespace)
     if self._comma_compat:
       separators.append(',')
     separators.sort()
     for sep_char in separators:
-      _helpers.WriteSimpleXMLElement(outfile, 'list_separator', repr(sep_char),
-                                     indent)
+      elements.append(_helpers.CreateXMLDOMElement(
+          doc, 'list_separator', repr(sep_char)))
+    return elements
