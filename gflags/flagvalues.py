@@ -632,11 +632,13 @@ class FlagValues(object):
       value: The new default value.
 
     Raises:
-      AttributeError: When there is no registered flag named name.
+      UnrecognizedFlagError: When there is no registered flag named name.
+      IllegalFlagValueError: When value is not valid.
     """
     fl = self.FlagDict()
     if name not in fl:
-      raise AttributeError(name)
+      self._SetUnknownFlag(name, value)
+      return
     if self.IsParsed():
       logging.warn(
           'FLAGS.SetDefault called on flag "%s" after flag parsing. Call this '
