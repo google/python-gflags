@@ -199,10 +199,10 @@ def register_multi_flags_validator(flag_names,
             being the value of the corresponding flag (string, boolean, etc).
         output - Boolean. Must return True if validator constraint is satisfied.
             If constraint is not satisfied, it should either return False or
-            raise validators.Error.
+            raise gflags.ValidationError.
     message: Error text to be shown to the user if checker returns False.
-        If checker raises validators.Error, message from the raised Error will
-        be shown.
+        If checker raises gflags.ValidationError, message from the raised error
+        will be shown.
     flag_values: An optional FlagValues instance to validate against.
 
   Raises:
