@@ -43,10 +43,32 @@ import six
 from gflags import _helpers
 
 
+# TODO(b/31830082): Migrate all users to PEP8-style methods and remove this.
+def _define_both_methods(class_name, class_dict, old_name, new_name):
+  # For any class definition:
+  # 1. Assert it does not define both old and new methods,
+  #    otherwise it does not work.
+  # 2. If it defines the old method, create the same new method.
+  # 3. If it defines the new method, create the same old method.
+  assert old_name not in class_dict or new_name not in class_dict, (
+      'Class "{}" cannot define both "{}" and "{}" methods.'.format(
+          class_name, old_name, new_name))
+  if old_name in class_dict:
+    class_dict[new_name] = class_dict[old_name]
+  elif new_name in class_dict:
+    class_dict[old_name] = class_dict[new_name]
+
+
 class _ArgumentParserCache(type):
   """Metaclass used to cache and share argument parsers among flags."""
 
   _instances = {}
+
+  def __new__(mcs, name, bases, dct):
+    _define_both_methods(name, dct, 'Parse', 'parse')
+    _define_both_methods(name, dct, 'Type', 'flag_type')
+    _define_both_methods(name, dct, 'Convert', 'convert')
+    return type.__new__(mcs, name, bases, dct)
 
   def __call__(cls, *args, **kwargs):
     """Returns an instance of the argument parser cls.
@@ -83,10 +105,10 @@ class _ArgumentParserCache(type):
         return type.__call__(cls, *args)
 
 
-class ArgumentParser(object):
+class ArgumentParser(six.with_metaclass(_ArgumentParserCache, object)):
   """Base class used to parse and convert arguments.
 
-  The Parse() method checks to make sure that the string argument is a
+  The parse() method checks to make sure that the string argument is a
   legal value and convert it to a native type.  If the value cannot be
   converted, it should throw a 'ValueError' exception with a human
   readable explanation of why the value is illegal.
@@ -98,18 +120,30 @@ class ArgumentParser(object):
   and shared between flags. Initializer arguments are allowed, but all
   member variables must be derived from initializer arguments only.
   """
-  __metaclass__ = _ArgumentParserCache
 
   syntactic_help = ''
 
-  def Parse(self, argument):
-    """Default implementation: always returns its argument unmodified."""
+  def parse(self, argument):
+    """Parses the string argument and returns the native value.
+
+    By default it returns its argument unmodified.
+
+    Args:
+      argument: string argument passed in the commandline.
+
+    Raises:
+      ValueError: Raised when it fails to parse the argument.
+
+    Returns:
+      The parsed value in native type.
+    """
     return argument
 
-  def Type(self):
+  def flag_type(self):
+    """Returns a string representing the type of the flag."""
     return 'string'
 
-  def _CustomXMLDOMElements(self, doc):  # pylint: disable=unused-argument
+  def _custom_xml_dom_elements(self, doc):  # pylint: disable=unused-argument
     """Returns a list of XML DOM elements to add additional flag information.
 
     Args:
@@ -121,10 +155,17 @@ class ArgumentParser(object):
     return []
 
 
-class ArgumentSerializer(object):
+class _ArgumentSerializerMeta(type):
+
+  def __new__(mcs, name, bases, dct):
+    _define_both_methods(name, dct, 'Serialize', 'serialize')
+    return type.__new__(mcs, name, bases, dct)
+
+
+class ArgumentSerializer(six.with_metaclass(_ArgumentSerializerMeta, object)):
   """Base class for generating string representations of a flag value."""
 
-  def Serialize(self, value):
+  def serialize(self, value):
     return _helpers.StrOrUnicode(value)
 
 
@@ -134,17 +175,17 @@ class NumericParser(ArgumentParser):
   Parsed value may be bounded to a given upper and lower bound.
   """
 
-  def IsOutsideBounds(self, val):
+  def is_outside_bounds(self, val):
     return ((self.lower_bound is not None and val < self.lower_bound) or
             (self.upper_bound is not None and val > self.upper_bound))
 
-  def Parse(self, argument):
-    val = self.Convert(argument)
-    if self.IsOutsideBounds(val):
+  def parse(self, argument):
+    val = self.convert(argument)
+    if self.is_outside_bounds(val):
       raise ValueError('%s is not %s' % (val, self.syntactic_help))
     return val
 
-  def _CustomXMLDOMElements(self, doc):
+  def _custom_xml_dom_elements(self, doc):
     elements = []
     if self.lower_bound is not None:
       elements.append(_helpers.CreateXMLDOMElement(
@@ -154,7 +195,7 @@ class NumericParser(ArgumentParser):
           doc, 'upper_bound', self.upper_bound))
     return elements
 
-  def Convert(self, argument):
+  def convert(self, argument):
     """Default implementation: always returns its argument unmodified."""
     return argument
 
@@ -185,13 +226,12 @@ class FloatParser(NumericParser):
       sh = '%s >= %s' % (self.number_name, lower_bound)
     self.syntactic_help = sh
 
-  def Convert(self, argument):
+  def convert(self, argument):
     """Converts argument to a float; raises ValueError on errors."""
     return float(argument)
 
-  def Type(self):
+  def flag_type(self):
     return 'float'
-# End of FloatParser
 
 
 class IntegerParser(NumericParser):
@@ -224,8 +264,8 @@ class IntegerParser(NumericParser):
       sh = '%s >= %s' % (self.number_name, lower_bound)
     self.syntactic_help = sh
 
-  def Convert(self, argument):
-    if type(argument) == str:
+  def convert(self, argument):
+    if isinstance(argument, str):
       base = 10
       if len(argument) > 2 and argument[0] == '0':
         if argument[1] == 'o':
@@ -236,16 +276,16 @@ class IntegerParser(NumericParser):
     else:
       return int(argument)
 
-  def Type(self):
+  def flag_type(self):
     return 'int'
 
 
 class BooleanParser(ArgumentParser):
   """Parser of boolean values."""
 
-  def Convert(self, argument):
+  def convert(self, argument):
     """Converts the argument to a boolean; raise ValueError on errors."""
-    if type(argument) == str:
+    if isinstance(argument, str):
       if argument.lower() in ['true', 't', '1']:
         return True
       elif argument.lower() in ['false', 'f', '0']:
@@ -259,11 +299,11 @@ class BooleanParser(ArgumentParser):
 
     raise ValueError('Non-boolean argument to boolean flag', argument)
 
-  def Parse(self, argument):
-    val = self.Convert(argument)
+  def parse(self, argument):
+    val = self.convert(argument)
     return val
 
-  def Type(self):
+  def flag_type(self):
     return 'bool'
 
 
@@ -284,7 +324,7 @@ class EnumParser(ArgumentParser):
     self.enum_values = enum_values
     self.case_sensitive = case_sensitive
 
-  def Parse(self, argument):
+  def parse(self, argument):
     """Determine validity of argument and return the correct element of enum.
 
     If self.enum_values is empty, then all arguments are valid and argument
@@ -320,7 +360,7 @@ class EnumParser(ArgumentParser):
         return [value for value in self.enum_values
                 if value.upper() == argument.upper()][0]
 
-  def Type(self):
+  def flag_type(self):
     return 'string enum'
 
 
@@ -329,7 +369,7 @@ class ListSerializer(ArgumentSerializer):
   def __init__(self, list_sep):
     self.list_sep = list_sep
 
-  def Serialize(self, value):
+  def serialize(self, value):
     return self.list_sep.join([_helpers.StrOrUnicode(x) for x in value])
 
 
@@ -338,7 +378,7 @@ class CsvListSerializer(ArgumentSerializer):
   def __init__(self, list_sep):
     self.list_sep = list_sep
 
-  def Serialize(self, value):
+  def serialize(self, value):
     """Serialize a list as a string, if possible, or as a unicode string."""
     if six.PY2:
       # In Python2 csv.writer doesn't accept unicode, so we convert to UTF-8.
@@ -374,7 +414,7 @@ class BaseListParser(ArgumentParser):
     self._name = name
     self.syntactic_help = 'a %s separated list' % self._name
 
-  def Parse(self, argument):
+  def parse(self, argument):
     if isinstance(argument, list):
       return argument
     elif not argument:
@@ -382,7 +422,7 @@ class BaseListParser(ArgumentParser):
     else:
       return [s.strip() for s in argument.split(self._token)]
 
-  def Type(self):
+  def flag_type(self):
     return '%s separated list of strings' % self._name
 
 
@@ -392,7 +432,7 @@ class ListParser(BaseListParser):
   def __init__(self):
     BaseListParser.__init__(self, ',', 'comma')
 
-  def Parse(self, argument):
+  def parse(self, argument):
     """Override to support full CSV syntax."""
     if isinstance(argument, list):
       return argument
@@ -408,10 +448,10 @@ class ListParser(BaseListParser):
         # was previously "reported" by allowing csv.Error to
         # propagate.
         raise ValueError('Unable to parse the value %r as a %s: %s'
-                         % (argument, self.Type(), e))
+                         % (argument, self.flag_type(), e))
 
-  def _CustomXMLDOMElements(self, doc):
-    elements = super(ListParser, self)._CustomXMLDOMElements(doc)
+  def _custom_xml_dom_elements(self, doc):
+    elements = super(ListParser, self)._custom_xml_dom_elements(doc)
     elements.append(_helpers.CreateXMLDOMElement(
         doc, 'list_separator', repr(',')))
     return elements
@@ -432,7 +472,7 @@ class WhitespaceSeparatedListParser(BaseListParser):
     name = 'whitespace or comma' if self._comma_compat else 'whitespace'
     BaseListParser.__init__(self, None, name)
 
-  def Parse(self, argument):
+  def parse(self, argument):
     """Override to support comma compatibility."""
     if isinstance(argument, list):
       return argument
@@ -443,9 +483,9 @@ class WhitespaceSeparatedListParser(BaseListParser):
         argument = argument.replace(',', ' ')
       return argument.split()
 
-  def _CustomXMLDOMElements(self, doc):
+  def _custom_xml_dom_elements(self, doc):
     elements = super(WhitespaceSeparatedListParser, self
-                    )._CustomXMLDOMElements(doc)
+                    )._custom_xml_dom_elements(doc)
     separators = list(string.whitespace)
     if self._comma_compat:
       separators.append(',')

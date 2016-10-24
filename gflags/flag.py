@@ -140,7 +140,7 @@ class Flag(object):
     if value is None:
       return None
     if self.serializer:
-      return repr(self.serializer.Serialize(value))
+      return repr(self.serializer.serialize(value))
     if self.boolean:
       if value:
         return repr('true')
@@ -159,7 +159,7 @@ class Flag(object):
           'flag --%s=%s: already defined as %s' % (
               self.name, argument, self.value))
     try:
-      self.value = self.parser.Parse(argument)
+      self.value = self.parser.parse(argument)
     except ValueError as e:  # Recast ValueError as IllegalFlagValueError.
       raise exceptions.IllegalFlagValueError(
           'flag --%s=%s: %s' % (self.name, argument, e))
@@ -186,7 +186,7 @@ class Flag(object):
       if not self.serializer:
         raise exceptions.Error(
             'Serializer not present for flag %s' % self.name)
-      return '--%s=%s' % (self.name, self.serializer.Serialize(self.value))
+      return '--%s=%s' % (self.name, self.serializer.serialize(self.value))
 
   def SetDefault(self, value):
     """Changes the default value (and current value too) for this Flag."""
@@ -218,7 +218,7 @@ class Flag(object):
     Returns:
       a string that describes the type of this Flag.
     """
-    return self.parser.Type()
+    return self.parser.flag_type()
 
   def _CreateXMLDOMElement(self, doc, module_name, is_key=False):
     """Returns an XML element that contains this flag's information.
@@ -254,7 +254,7 @@ class Flag(object):
     # latter case in order to remain consistent.
     if self.serializer and not isinstance(self.default, str):
       if self.default is not None:
-        default_serialized = self.serializer.Serialize(self.default)
+        default_serialized = self.serializer.serialize(self.default)
       else:
         default_serialized = ''
     else:
@@ -282,7 +282,7 @@ class Flag(object):
     """
     # Usually, the parser knows the extra details about the flag, so
     # we just forward the call to it.
-    return self.parser._CustomXMLDOMElements(doc)  # pylint: disable=protected-access
+    return self.parser._custom_xml_dom_elements(doc)  # pylint: disable=protected-access
 
 
 class BooleanFlag(Flag):

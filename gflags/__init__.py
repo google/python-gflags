@@ -355,7 +355,7 @@ def _register_bounds_validator_if_needed(parser, name, flag_values):
   if parser.lower_bound is not None or parser.upper_bound is not None:
 
     def checker(value):
-      if value is not None and parser.IsOutsideBounds(value):
+      if value is not None and parser.is_outside_bounds(value):
         message = '%s is not %s' % (value, parser.syntactic_help)
         raise ValidationError(message)
       return True
@@ -843,7 +843,7 @@ def DEFINE_alias(name, original_name, flag_values=FLAGS, module_name=None):  # p
   class _Parser(ArgumentParser):
     """The parser for the alias flag calls the original flag parser."""
 
-    def Parse(self, argument):
+    def parse(self, argument):
       flag.Parse(argument)
       return flag.value
 
