@@ -76,7 +76,8 @@ _helpers.disclaim_module_ids.add(id(sys.modules[__name__]))
 # Module exceptions:
 # TODO(vrusinov): these should all be renamed to *Error, e.g. IllegalFlagValue
 # should be removed in favour of IllegalFlagValueError.
-FlagsError = exceptions.FlagsError
+FlagsError = exceptions.Error
+Error = exceptions.Error
 CantOpenFlagFileError = exceptions.CantOpenFlagFileError
 DuplicateFlagError = exceptions.DuplicateFlagError
 DuplicateFlagCannotPropagateNoneToSwig = (
@@ -505,11 +506,11 @@ def ADOPT_module_key_flags(  # pylint: disable=g-bad-name
       to be overridden.
 
   Raises:
-    FlagsError: When given an argument that is a module name (a
+    Error: When given an argument that is a module name (a
     string), instead of a module object.
   """
   if not isinstance(module, types.ModuleType):
-    raise FlagsError('Expected a module object, not %r.' % (module,))
+    raise Error('Expected a module object, not %r.' % (module,))
   # TODO(vrusinov): _GetKeyFlagsForModule should be public.
   _internal_declare_key_flags(
       [f.name for f in flag_values._GetKeyFlagsForModule(module.__name__)],  # pylint: disable=protected-access

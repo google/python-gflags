@@ -419,9 +419,9 @@ class FlagValues(object):
       # into the bytes type we require.
       name = name.encode('utf-8')
     if not isinstance(name, type('')):
-      raise exceptions.FlagsError('Flag name must be a string')
+      raise exceptions.Error('Flag name must be a string')
     if not name:
-      raise exceptions.FlagsError('Flag name cannot be empty')
+      raise exceptions.Error('Flag name cannot be empty')
     if name in fl and not flag.allow_override and not fl[name].allow_override:
       module, module_name = _helpers.GetCallingModuleObjectAndName()
       if (self.FindModuleDefiningFlag(name) == module_name and
@@ -670,7 +670,7 @@ class FlagValues(object):
        The list of arguments not parsed as options, including argv[0].
 
     Raises:
-       FlagsError: on any parsing error.
+       Error: on any parsing error.
        ValueError: on flag value parsing error.
     """
     if not argv:
@@ -720,7 +720,7 @@ class FlagValues(object):
         undefok: Set of flags that were given via --undefok.
 
     Raises:
-       FlagsError: on any parsing error.
+       Error: on any parsing error.
        ValueError: on flag value parsing error.
     """
     unknown_flags, unparsed_args, undefok = [], [], set()
@@ -735,7 +735,7 @@ class FlagValues(object):
         try:
           return next(args) if value is None else value
         except StopIteration:
-          raise exceptions.FlagsError('Missing value for flag ' + arg)
+          raise exceptions.Error('Missing value for flag ' + arg)
 
       if not arg.startswith('-'):
         # A non-argument: default is break, GNU is skip.
@@ -1009,14 +1009,14 @@ class FlagValues(object):
       str filename from a flagfile_str of form -[-]flagfile=filename.
 
     Raises:
-      FlagsError: when illegal --flagfile provided.
+      Error: when illegal --flagfile provided.
     """
     if flagfile_str.startswith('--flagfile='):
       return os.path.expanduser((flagfile_str[(len('--flagfile=')):]).strip())
     elif flagfile_str.startswith('-flagfile='):
       return os.path.expanduser((flagfile_str[(len('-flagfile=')):]).strip())
     else:
-      raise exceptions.FlagsError(
+      raise exceptions.Error(
           'Hit illegal --flagfile type: %s' % flagfile_str)
 
   def __GetFlagFileLines(self, filename, parsed_file_stack=None):

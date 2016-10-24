@@ -69,7 +69,7 @@ class Flag(object):
   typically only called by a 'FlagValues' object.  The Parse() method is
   a thin wrapper around the 'ArgumentParser' Parse() method.  The parsed
   value is saved in .value, and the .present attribute is updated.  If
-  this flag was already present, a FlagsError is raised.
+  this flag was already present, an Error is raised.
 
   Parse() is also called during __init__ to parse the default value and
   initialize the .value attribute.  This enables other python modules to
@@ -107,7 +107,7 @@ class Flag(object):
     self._value = None
     self.validators = []
     if allow_hide_cpp and allow_cpp_override:
-      raise exceptions.FlagsError(
+      raise exceptions.Error(
           "Can't have both allow_hide_cpp (means use Python flag) and "
           'allow_cpp_override (means use C++ flag after InitGoogle)')
 
@@ -184,7 +184,7 @@ class Flag(object):
         return '--no%s' % self.name
     else:
       if not self.serializer:
-        raise exceptions.FlagsError(
+        raise exceptions.Error(
             'Serializer not present for flag %s' % self.name)
       return '--%s=%s' % (self.name, self.serializer.Serialize(self.value))
 
@@ -374,7 +374,7 @@ class MultiFlag(Flag):
 
   def Serialize(self):
     if not self.serializer:
-      raise exceptions.FlagsError(
+      raise exceptions.Error(
           'Serializer not present for flag %s' % self.name)
     if self.value is None:
       return ''

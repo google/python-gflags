@@ -43,15 +43,19 @@ from gflags import _helpers
 _helpers.disclaim_module_ids.add(id(sys.modules[__name__]))
 
 
-class FlagsError(Exception):
+class Error(Exception):
   """The base class for all flags errors."""
 
 
-class CantOpenFlagFileError(FlagsError):
+# TODO(b/31596146): Remove FlagsError.
+FlagsError = Error
+
+
+class CantOpenFlagFileError(Error):
   """Raised if flagfile fails to open: doesn't exist, wrong permissions, etc."""
 
 
-class DuplicateFlagCannotPropagateNoneToSwig(FlagsError):
+class DuplicateFlagCannotPropagateNoneToSwig(Error):
   """Raised when redefining a SWIG flag and the default value is None.
 
   It's raised when redefining a SWIG flag with allow_override=True and the
@@ -60,7 +64,7 @@ class DuplicateFlagCannotPropagateNoneToSwig(FlagsError):
   """
 
 
-class DuplicateFlagError(FlagsError):
+class DuplicateFlagError(Error):
   """Raised if there is a flag naming conflict."""
 
   @classmethod
@@ -94,7 +98,7 @@ class DuplicateFlagError(FlagsError):
     return cls(msg)
 
 
-class IllegalFlagValueError(FlagsError):
+class IllegalFlagValueError(Error):
   """Raised if the flag command line argument is illegal."""
 
 
@@ -102,7 +106,7 @@ class IllegalFlagValueError(FlagsError):
 IllegalFlagValue = IllegalFlagValueError
 
 
-class UnrecognizedFlagError(FlagsError):
+class UnrecognizedFlagError(Error):
   """Raised if a flag is unrecognized.
 
   Attributes:
@@ -117,13 +121,13 @@ class UnrecognizedFlagError(FlagsError):
       tip = '. Did you mean: %s?' % ', '.join(suggestions)
     else:
       tip = ''
-    FlagsError.__init__(
+    Error.__init__(
         self, 'Unknown command line flag \'%s\'%s' % (flagname, tip))
 
 
-class UnparsedFlagAccessError(FlagsError):
+class UnparsedFlagAccessError(Error):
   """Attempt to use flag from unparsed FlagValues."""
 
 
-class ValidationError(FlagsError):
+class ValidationError(Error):
   """Raised if flag validator constraint is not satisfied."""
