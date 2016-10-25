@@ -63,6 +63,11 @@ _UNPARSED_FLAG_ACCESS_ENV_NAME = 'GFLAGS_ALLOW_UNPARSED_FLAG_ACCESS'
 # default.
 _UNPARSED_ACCESS_DISABLED_PERCENT = 0
 
+# b/32278439 will change flag parsing to use GNU-style scanning by default.
+# This environment variable allows users to force setting the default parsing
+# style. Do NOT rely on it. It will be removed as part of b/32278439.
+_USE_GNU_GET_OPT_ENV_NAME = 'GFLAGS_USE_GNU_GET_OPT'
+
 
 
 
@@ -129,8 +134,12 @@ class FlagValues(object):
     # None or Method(name, value) to call from __setattr__ for an unknown flag.
     self.__dict__['__set_unknown'] = None
 
-    # By default don't use the GNU-style scanning when parsing the args.
-    self.UseGnuGetOpt(False)
+    if _USE_GNU_GET_OPT_ENV_NAME in os.environ:
+      self.__dict__['__use_gnu_getopt'] = (
+          os.environ[_USE_GNU_GET_OPT_ENV_NAME] == '1')
+    else:
+      # By default don't use the GNU-style scanning when parsing the args.
+      self.__dict__['__use_gnu_getopt'] = False
 
   def UseGnuGetOpt(self, use_gnu_getopt=True):
     """Use GNU-style scanning. Allows mixing of flag and non-flag arguments.
