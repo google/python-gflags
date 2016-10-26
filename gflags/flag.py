@@ -34,13 +34,31 @@ flags package and use the aliases defined at the package level.
 """
 
 from functools import total_ordering
+
+import six
+
 from gflags import _helpers
 from gflags import argument_parser
 from gflags import exceptions
 
 
+class _FlagMetaClass(type):
+
+  def __new__(mcs, name, bases, dct):
+    _helpers.define_both_methods(name, dct, 'Parse', 'parse')
+    _helpers.define_both_methods(name, dct, 'Unparse', 'unparse')
+    _helpers.define_both_methods(name, dct, 'Serialize', 'serialize')
+
+    # TODO(b/32385202): Migrate all users to use FlagValues.SetDefault and
+    # remove the public Flag.SetDefault method.
+    _helpers.define_both_methods(name, dct, 'SetDefault', '_set_default')
+
+    _helpers.define_both_methods(name, dct, 'Type', 'flag_type')
+    return type.__new__(mcs, name, bases, dct)
+
+
 @total_ordering
-class Flag(object):
+class Flag(six.with_metaclass(_FlagMetaClass, object)):
   """Information about a command-line flag.
 
   'Flag' objects define the following fields:
@@ -112,7 +130,7 @@ class Flag(object):
           'allow_cpp_override (means use C++ flag after InitGoogle)')
 
     if parse_default:
-      self.SetDefault(default)
+      self._set_default(default)
     else:
       self.default = default
 
@@ -135,7 +153,7 @@ class Flag(object):
       return id(self) < id(other)
     return NotImplemented
 
-  def __GetParsedValueAsString(self, value):
+  def _get_parsed_value_as_string(self, value):
     """Get parsed flag value as string."""
     if value is None:
       return None
@@ -148,7 +166,7 @@ class Flag(object):
         return repr('false')
     return repr(_helpers.StrOrUnicode(value))
 
-  def Parse(self, argument):
+  def parse(self, argument):
     """Parse string and set flag value.
 
     Args:
@@ -165,7 +183,7 @@ class Flag(object):
           'flag --%s=%s: %s' % (self.name, argument, e))
     self.present += 1
 
-  def Unparse(self):
+  def unparse(self):
     if self.default is None:
       self.value = None
     else:
@@ -174,7 +192,7 @@ class Flag(object):
     self.using_default_value = True
     self.present = 0
 
-  def Serialize(self):
+  def serialize(self):
     if self.value is None:
       return ''
     if self.boolean:
@@ -188,27 +206,21 @@ class Flag(object):
             'Serializer not present for flag %s' % self.name)
       return '--%s=%s' % (self.name, self.serializer.serialize(self.value))
 
-  def SetDefault(self, value):
+  def _set_default(self, value):
     """Changes the default value (and current value too) for this Flag."""
     # We can't allow a None override because it may end up not being
     # passed to C++ code when we're overriding C++ flags.  So we
     # cowardly bail out until someone fixes the semantics of trying to
     # pass None to a C++ flag.  See swig_flags.Init() for details on
     # this behavior.
-    # TODO(olexiy): Users can directly call this method, bypassing all flags
-    # validators (we don't have FlagValues here, so we can not check
-    # validators).
-    # The simplest solution I see is to make this method private.
-    # Another approach would be to store reference to the corresponding
-    # FlagValues with each flag, but this seems to be an overkill.
     if value is None and self.allow_override:
       raise exceptions.DuplicateFlagCannotPropagateNoneToSwig(self.name)
 
     self.default = value
-    self.Unparse()
-    self.default_as_str = self.__GetParsedValueAsString(self.value)
+    self.unparse()
+    self.default_as_str = self._get_parsed_value_as_string(self.value)
 
-  def Type(self):
+  def flag_type(self):
     """Get type of flag.
 
     NOTE: we use strings, and not the types.*Type constants because
@@ -220,7 +232,7 @@ class Flag(object):
     """
     return self.parser.flag_type()
 
-  def _CreateXMLDOMElement(self, doc, module_name, is_key=False):
+  def _create_xml_dom_element(self, doc, module_name, is_key=False):
     """Returns an XML element that contains this flag's information.
 
     This is information that is relevant to all flags (e.g., name,
@@ -263,16 +275,17 @@ class Flag(object):
         doc, 'default', default_serialized))
     element.appendChild(_helpers.CreateXMLDOMElement(
         doc, 'current', self.value))
-    element.appendChild(_helpers.CreateXMLDOMElement(doc, 'type', self.Type()))
+    element.appendChild(_helpers.CreateXMLDOMElement(
+        doc, 'type', self.flag_type()))
     # Adds extra flag features this flag may have.
-    for e in self._ExtraXMLDOMElements(doc):
+    for e in self._extra_xml_dom_elements(doc):
       element.appendChild(e)
     return element
 
-  def _ExtraXMLDOMElements(self, doc):
+  def _extra_xml_dom_elements(self, doc):
     """Returns extra info about this flag in XML.
 
-    "Extra" means "not already included by _CreateXMLDOMElement above."
+    "Extra" means "not already included by _create_xml_dom_element above."
 
     Args:
       doc: A minidom.Document, the DOM document it should create nodes from.
@@ -314,7 +327,7 @@ class EnumFlag(Flag):
     Flag.__init__(self, p, g, name, default, help, short_name, **args)
     self.help = '<%s>: %s' % ('|'.join(enum_values), self.help)
 
-  def _ExtraXMLDOMElements(self, doc):
+  def _extra_xml_dom_elements(self, doc):
     elements = []
     for enum_value in self.parser.enum_values:
       elements.append(_helpers.CreateXMLDOMElement(
@@ -343,7 +356,7 @@ class MultiFlag(Flag):
     Flag.__init__(self, *args, **kwargs)
     self.help += ';\n    repeat this option to specify a list of values'
 
-  def Parse(self, arguments):
+  def parse(self, arguments):
     """Parses one or more arguments with the installed parser.
 
     Args:
@@ -372,7 +385,7 @@ class MultiFlag(Flag):
     # put list of option values back in the 'value' attribute
     self.value = values
 
-  def Serialize(self):
+  def serialize(self):
     if not self.serializer:
       raise exceptions.Error(
           'Serializer not present for flag %s' % self.name)
@@ -385,16 +398,16 @@ class MultiFlag(Flag):
 
     for self.value in multi_value:
       if s: s += ' '
-      s += Flag.Serialize(self)
+      s += Flag.serialize(self)
 
     self.value = multi_value
 
     return s
 
-  def Type(self):
-    return 'multi ' + self.parser.Type()
+  def flag_type(self):
+    return 'multi ' + self.parser.flag_type()
 
-  def _ExtraXMLDOMElements(self, doc):
+  def _extra_xml_dom_elements(self, doc):
     elements = []
     if hasattr(self.parser, 'enum_values'):
       for enum_value in self.parser.enum_values:

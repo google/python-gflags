@@ -43,31 +43,15 @@ import six
 from gflags import _helpers
 
 
-# TODO(b/31830082): Migrate all users to PEP8-style methods and remove this.
-def _define_both_methods(class_name, class_dict, old_name, new_name):
-  # For any class definition:
-  # 1. Assert it does not define both old and new methods,
-  #    otherwise it does not work.
-  # 2. If it defines the old method, create the same new method.
-  # 3. If it defines the new method, create the same old method.
-  assert old_name not in class_dict or new_name not in class_dict, (
-      'Class "{}" cannot define both "{}" and "{}" methods.'.format(
-          class_name, old_name, new_name))
-  if old_name in class_dict:
-    class_dict[new_name] = class_dict[old_name]
-  elif new_name in class_dict:
-    class_dict[old_name] = class_dict[new_name]
-
-
 class _ArgumentParserCache(type):
   """Metaclass used to cache and share argument parsers among flags."""
 
   _instances = {}
 
   def __new__(mcs, name, bases, dct):
-    _define_both_methods(name, dct, 'Parse', 'parse')
-    _define_both_methods(name, dct, 'Type', 'flag_type')
-    _define_both_methods(name, dct, 'Convert', 'convert')
+    _helpers.define_both_methods(name, dct, 'Parse', 'parse')
+    _helpers.define_both_methods(name, dct, 'Type', 'flag_type')
+    _helpers.define_both_methods(name, dct, 'Convert', 'convert')
     return type.__new__(mcs, name, bases, dct)
 
   def __call__(cls, *args, **kwargs):
@@ -158,7 +142,7 @@ class ArgumentParser(six.with_metaclass(_ArgumentParserCache, object)):
 class _ArgumentSerializerMeta(type):
 
   def __new__(mcs, name, bases, dct):
-    _define_both_methods(name, dct, 'Serialize', 'serialize')
+    _helpers.define_both_methods(name, dct, 'Serialize', 'serialize')
     return type.__new__(mcs, name, bases, dct)
 
 

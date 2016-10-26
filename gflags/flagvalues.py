@@ -654,7 +654,7 @@ class FlagValues(object):
           'method at the top level of a module to avoid overwriting the value '
           'passed at the command line.',
           name)
-    fl[name].SetDefault(value)
+    fl[name]._set_default(value)  # pylint: disable=protected-access
     self._AssertValidators(fl[name].validators)
 
   def __contains__(self, name):
@@ -716,7 +716,7 @@ class FlagValues(object):
 
     This function goes through args and does the bulk of the flag parsing.
     It will find the corresponding flag in our flag dictionary, and call its
-    .Parse() method on the flag value.
+    .parse() method on the flag value.
 
     Args:
       args: List of strings with the arguments to parse.
@@ -795,7 +795,7 @@ class FlagValues(object):
 
 
       if flag:
-        flag.Parse(value)
+        flag.parse(value)
         flag.using_default_value = False
       elif known_only:
         unparsed_args.append(arg)
@@ -821,7 +821,7 @@ class FlagValues(object):
   def Reset(self):
     """Resets the values to the point before FLAGS(argv) was called."""
     for f in self.FlagDict().values():
-      f.Unparse()
+      f.unparse()
     # We log this message before marking flags as unparsed to avoid a
     # problem when the logging library causes flags access.
     logging.info('Reset() called; flags access will now raise errors.')
@@ -1190,7 +1190,7 @@ class FlagValues(object):
     s = ''
     for flag in self.FlagDict().values():
       if flag.value is not None:
-        s += flag.Serialize() + '\n'
+        s += flag.serialize() + '\n'
     return s
 
   def AppendFlagsIntoFile(self, filename):
@@ -1246,7 +1246,7 @@ class FlagValues(object):
       flag_list.sort()
       for unused_flag_name, flag in flag_list:
         is_key = flag in key_flags
-        all_flag.appendChild(flag._CreateXMLDOMElement(  # pylint: disable=protected-access
+        all_flag.appendChild(flag._create_xml_dom_element(  # pylint: disable=protected-access
             doc, module_name, is_key=is_key))
 
     outfile = outfile or sys.stdout

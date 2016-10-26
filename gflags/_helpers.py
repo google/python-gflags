@@ -399,3 +399,32 @@ def IsRunningTest():
       'pytest',
   }
   return bool(test_modules & modules)
+
+
+# TODO(b/31830082): Migrate all users to PEP8-style methods and remove this.
+def define_both_methods(class_name, class_dict, old_name, new_name):  # pylint: disable=invalid-name
+  """Function to help CamelCase to PEP8 style class methods migration.
+
+  For any class definition:
+      1. Assert it does not define both old and new methods,
+         otherwise it does not work.
+      2. If it defines the old method, create the same new method.
+      3. If it defines the new method, create the same old method.
+
+  Args:
+    class_name: the class name.
+    class_dict: the class dictionary.
+    old_name: old method's name.
+    new_name: new method's name.
+
+  Raises:
+    AssertionError: raised when the class defines both the old_name and
+        new_name.
+  """
+  assert old_name not in class_dict or new_name not in class_dict, (
+      'Class "{}" cannot define both "{}" and "{}" methods.'.format(
+          class_name, old_name, new_name))
+  if old_name in class_dict:
+    class_dict[new_name] = class_dict[old_name]
+  elif new_name in class_dict:
+    class_dict[old_name] = class_dict[new_name]

@@ -844,7 +844,7 @@ def DEFINE_alias(name, original_name, flag_values=FLAGS, module_name=None):  # p
     """The parser for the alias flag calls the original flag parser."""
 
     def parse(self, argument):
-      flag.Parse(argument)
+      flag.parse(argument)
       return flag.value
 
   class _FlagAlias(Flag):
