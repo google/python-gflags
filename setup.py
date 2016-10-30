@@ -43,6 +43,7 @@ setup(name='python-gflags',
       requires=['six'],
       classifiers=[
           'Programming Language :: Python :: 2.7',
+          'Programming Language :: Python :: 3',
           'Programming Language :: Python :: 3.4',
           'Intended Audience :: Developers',
           'Topic :: Software Development :: Libraries :: Python Modules',
