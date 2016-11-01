@@ -1,4 +1,18 @@
-Fri Sep 09 00:00:01 2016  Google Inc. <google-gflags@googlegroups.com>
+Tue Nov 01 00:00:01 2016  Google Inc. <google-gflags@googlegroups.com>
+  * python-gflags: version 3.1.0.
+  * Python3 compatibility
+  * Removed UnrecognizedFlag exception.
+  * Replaced flags.DuplicateFlag with flags.DuplicateFlagError.
+  * Moved the validators.Error class to exceptions.ValidationError.
+  * Renamed IllegalFlagValue to IllegalFlagValueError.
+  * Removed MutualExclusionValidator class, in favor of flags.MarkFlagsAsMutualExclusive.
+  * Removed FlagValues.AddValidator method.
+  * Removed _helpers.GetMainModule.
+  * Use xml.dom.minidom to create XML strings, instead of manual crafting.
+  * Declared PEP8-style names.
+  * Added examples.
+
+
 
   * python-gflags: version 3.0.7.
   * Removed the unused method ShortestUniquePrefixes.
