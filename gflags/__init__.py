@@ -898,3 +898,7 @@ doc_to_help = DocToHelp
 declare_key_flag = DECLARE_key_flag
 adopt_module_key_flags = ADOPT_module_key_flags
 disclaim_key_flags = DISCLAIM_key_flags
+
+# New API names, they are more consistent with each other.
+DEFINE_multi_string = DEFINE_multistring
+DEFINE_multi_integer = DEFINE_multi_int
