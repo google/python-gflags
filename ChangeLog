@@ -1,3 +1,7 @@
+Fri Oct 27 00:00:01 2017  Google Inc. <google-gflags@googlegroups.com>
+* python-gflags: version 3.1.2.
+* New API names for compatibility with abseil-py.
+
 Mon Jan 30 00:00:01 2017  Google Inc. <google-gflags@googlegroups.com>
   * python-gflags: version 3.1.1.
   * Added PEP8 style method/function aliases.
